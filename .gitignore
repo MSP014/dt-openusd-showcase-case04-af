@@ -1,35 +1,54 @@
-# Showreel Protocol - Case 04 Gitignore
+# NVIDIA Showreel - Unified .gitignore
+# Estate Manager: Higgins
 
-# Heavy Assets
+# --- AI Protocol (Local Only) ---
+protocols/
+
+# --- Heavy Work Directories (Project Structure) ---
 assets/
 cache/
-render_out/
+Refs/
+_incoming/
 geo/
+HIP/
+OUT/
 
-# Source Files (Binary/Proprietary)
+# --- Source/Project Files (Software Specific) ---
 AE/
 PRJ/
-Refs/
+AI/
+
+# --- Media & Renders (Heavy) ---
 EXR/
 MP4/
-OUT/
-AI/
 GIF/
 MOV/
 PNG/
-_incoming/
 
-# Files
+# --- File Extensions (Specific Blocklist) ---
+# USD (Heavy Binary Crates blocked, ASCII allowed if strictly needed, but guarding general USD)
 *.usd
+*.usdc
+*.usdz
+
+# Houdini
 *.hip
+*.hipnc
+*.hiplc
+*.bgeo
+*.bgeo.sc
+*.vdb
+*.abc
+
+# Adobe / Image
 *.aep
 *.prproj
-.code-workspace
+*.psd
+*.ai
+*.exr
+*.hdr
 
-# AI Configuration (Discretion)
-protocols/
-
-# Python
+# --- Python ---
 __pycache__/
 *.py[cod]
 *$py.class
@@ -37,3 +56,11 @@ __pycache__/
 .venv
 env/
 venv/
+.pytest_cache/
+
+# --- Tools & System ---
+.idea/
+.vscode/
+*.code-workspace
+.DS_Store
+Thumbs.db

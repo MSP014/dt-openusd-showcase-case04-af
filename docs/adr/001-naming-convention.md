@@ -1,4 +1,4 @@
-# ADR 001: Naming Conventions & Language Standards
+# ADR 001: Naming Convention & Standards
 
 ## Status
 
@@ -6,35 +6,46 @@ Accepted
 
 ## Context
 
-In a hybrid pipeline (Houdini/Omniverse/Python), conflicting naming standards (Houdini's `snake_case` vs USD's `CamelCase`) cause friction. We need a unified standard to ensure "Case 04" integration logic remains clean and predictable.
+Case 04 (Air Field) involves large-scale logistics automation. To prevent "where is that file?" fatigue in a hybrid Houdini/Omniverse pipeline, we need a standardised grammar for assets, telemetry, and documentation.
 
 ## Decision
 
-### 1. Language
+We will enforce the following naming and operational rules:
 
-* **Documentation**: British English (en-GB). Use `s` (optimise), not `z`.
-* **Commit Messages**: British English. Imperative mood ("Add", not "Added").
-* **User Communication**: Russian (as per Persona).
+### 1. Repository Naming
 
-### 2. Python
+Format: `dt-omniverse-showreel-case##-[key]`
 
-* **Files/Modules**: `snake_case.py`
-* **Functions/Variables**: `snake_case`
-* **Classes**: `PascalCase`
-* **Constants**: `SCREAMING_SNAKE_CASE`
+* **Example:** `dt-omniverse-showreel-case04-af` (this repo)
+* **dt**: Digital Twin
+* **omniverse**: Platform
+* **showreel**: Project type
+* **case04**: Sequence ID
+* **af**: Project Key (Air Field)
 
-### 3. USD / Omniverse / Houdini
+### 2. File Layers (Snake Case)
 
-* **Asset Names**: `PascalCase` (e.g., `FuelTanker`, `GroundCrew`)
-* **USD Stages**: `snake_case` (e.g., `main_stage.usd`)
-* **Attributes**: `camelCase` (e.g., `fuelLevel`, `routeId`) to align with USD schema standards.
+* `mesh_*` (Geometry, e.g., `mesh_tanker_truck`)
+* `mat_*` (Materials / Shaders)
+* `light_*` (Lighting setups)
+* `sim_*` (Simulation caches / VRP data)
 
-### 4. Git
+### 3. USD Suffixes
 
-* **Branches**: `feature/description-of-change`
-* **Tags**: `vX.Y.Z`
+* `.usda`: ASCII (Human-readable, git-friendly). Use for composition arcs and root layers.
+* `.usdc`: Binary (Performance). Use for heavy geometry/caches. **GITIGNORE this extension.**
+
+### 4. Language Standards
+
+* **Documentation**: All technical documentation and comments MUST be in **British English** (en-GB). Use `s` instead of `z` (e.g., *optimise*, *standardise*).
+* **Commit Messages**: British English, imperative mood (e.g., "Add feature", not "Added feature").
+
+### 5. Git Workflow
+
+* **Branches**: `feature/description-of-change` or `fix/issue-id`.
+* **Tags**: Use semantic versioning for milestones (e.g., `v1.0.0-gold`).
 
 ## Consequences
 
-* **Positive**: Predictable auto-complete in Python and USD. Clear distinction between Logic (Python) and Data/Scene (USD).
-* **Negative**: Requires mental switching between `snake_case` (Python) and `camelCase` (USD attributes).
+* **Positive:** Predictable file system, clear separation of binary vs text data, and consistent international documentation code.
+* **Negative:** Requires discipline to rename existing assets during import.

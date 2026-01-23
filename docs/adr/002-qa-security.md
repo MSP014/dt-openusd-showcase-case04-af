@@ -1,4 +1,4 @@
-# ADR 002: QA & Security Guardrails
+# ADR 002: QA & Security Protocols
 
 ## Status
 
@@ -6,27 +6,32 @@ Accepted
 
 ## Context
 
-"Case 04" involves Python logic automating complex logistics. Typos or untested code could break the showreel pipeline. We also need to prevent secret leakage (API Keys) and vulnerable dependencies.
+Case 04 (Air Field) involves complex logistics logic (VRP) that could break the showreel sequence if improperly automated. We must also safeguard any airfield layout data or fleet management credentials.
 
 ## Decision
 
-We enforce the **"Measure Twice, Cut Once"** philosophy through automated guardrails.
+We enforce a strict "Shift Left" strategy using `pre-commit` hooks and automated guardrails:
 
-### 1. Pre-commit Hooks
+### 1. Guardrails (Pre-commit)
 
-Must run before every commit:
+* **Linting:** `black` (Formatting), `flake8` (Logic), `isort` (Imports).
+* **Security:**
+  * `bandit`: Scans for common security issues (e.g., hardcoded passwords, unsafe exec).
+  * `pip-audit`: Checks `requirements.txt` for known vulnerabilities.
+* **Hygiene:** `check-added-large-files` (Max 10MB) to prevent repo bloating.
 
-* **Formatting**: `black`, `isort` (Consistency)
-* **Linting**: `flake8` (Syntax/Logic errors)
-* **Security**: `bandit` (Static code analysis), `pip-audit` (Dependency vulnerabilities)
-* **Hygiene**: `trailing-whitespace`, `check-yaml`
+### 2. Testing
 
-### 2. Security
+* `pytest` must pass locally before push.
+* **Domain Validation:** Tests MUST verify logistics logic (e.g., VRP solver output validation, routing schema checks).
+* **Note:** Tests are covered by Linters (Black/Flake8) but excluded from Bandit security scans to avoid false positives related to `assert` usage.
 
-* **Secrets**: strictly `.env`. Never commit secrets.
-* **Network**: No external calls (curl/requests) without user permit.
+### 3. Secrets Management
+
+* **Isolation**: All sensitive data (fleet API keys, credentials) MUST be stored in a `.env` file.
+* **Sanity**: The `.env` file MUST be included in `.gitignore`. Never commit secrets to version control.
 
 ## Consequences
 
-* **Positive**: Code is always clean and formatted. Vulnerabilities are caught early.
-* **Negative**: Committing takes longer (~10s). Requires rigorous discipline to fix errors instead of bypassing hooks.
+* **Positive:** Higher code quality, reduced security risk, blocked accidental large files.
+* **Negative:** Initial setup friction; `pip-audit` requires maintenance of `requirements.txt`.

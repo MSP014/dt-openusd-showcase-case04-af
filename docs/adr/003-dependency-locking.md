@@ -1,4 +1,4 @@
-# ADR 003: Dependency Locking Strategy
+# ADR 003: Dependency Locking & Isolation
 
 ## Status
 
@@ -6,25 +6,29 @@ Accepted
 
 ## Context
 
-Python environments are prone to "drift" if dependencies are not strictly locked. Standard `requirements.txt` often misses transitive dependency versions, leading to "it works on my machine" issues.
+Logistics automation and VRP solving scripts require absolute version consistency. To ensure that Arthur's pathfinding logic produces the same results in every simulation run, the environment must be deterministic.
 
 ## Decision
 
-We adopt **explicit dependency compilation**.
+We enforce a **"One Env Per Case"** policy with strict locking:
 
-### 1. Mechanism
+### 1. Isolation
 
-* **Source**: `requirements.in` (Top-level direct dependencies).
-* **Lockfile**: `requirements.txt` (Generated via `pip-compile`). Includes ALL dependencies with strict hashes.
+* **Environment Name:** `case04-env` (or `af-env`)
+* **NEVER** install packages into the global Python or base Conda environment.
 
-### 2. Workflow
+### 2. Dependency Locking
 
-* Add package to `requirements.in`.
-* Run `pip-compile requirements.in`.
-* Commit both files.
-* Install via `pip install -r requirements.txt`.
+We use `pip-tools` for deterministic builds.
+
+* **Source of Truth:** `requirements.in` (High-level deps, e.g., `requests`, `numpy`, `networkx`).
+* **Lockfile:** `requirements.txt` (Generated via `pip-compile`). Contains exact versions + hashes.
+* **Workflow:**
+    1. Edit `requirements.in`.
+    2. Run `pip-compile requirements.in`.
+    3. Commit both files.
 
 ## Consequences
 
-* **Positive**: 100% reproducible builds. Pip-audit can scan exact versions used.
-* **Negative**: Extra step to update packages (cannot just `pip install X`).
+* **Positive:** 100% reproducibility. `pip-audit` works effectively.
+* **Negative:** Extra step (`pip-compile`) when adding libraries.

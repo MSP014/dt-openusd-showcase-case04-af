@@ -1,4 +1,4 @@
-# Case 04: Air Field (Logistics Optimization)
+# Case 04: Air Field (Aviation Logistics Digital Twin)
 
 > [!WARNING]
 > **Work in Progress:** This project is currently under active development. Some links and assets may be placeholders.
@@ -31,6 +31,17 @@
 This project follows the **Showreel Protocol** to manage the complexity of hybrid pipelines.
 
 * [**View Architecture Decision Records (ADR)**](docs/adr/) – Design notes on Naming Conventions, Security Guardrails, and VRP Logic integration.
+
+## 📂 Repository Structure
+
+```text
+.
+├── docs/        # ADRs and knowledge base
+├── plans/       # Implementation plans & tech debt
+├── src/         # Core logic and scripts
+├── tests/       # Validation and testing suite
+└── tools/       # Internal pipeline utilities
+```
 
 ---
 

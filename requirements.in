@@ -1,14 +1,25 @@
-# Core
+# NVIDIA Showreel Standard - Universal Dependency Stack
+
+# Infrastructure & Orchestration
+pip-tools
+pre-commit
 python-dotenv
 requests
+jira
 
-# Dev / QA
-pre-commit
-pip-tools
+# QA & Security
 black
 isort
 flake8
 bandit
 pip-audit
+
+# Testing
 pytest
 pytest-asyncio
+pytest-cov
+
+# Data & Physics (Digital Twin Foundation)
+pydantic
+numpy
+scipy

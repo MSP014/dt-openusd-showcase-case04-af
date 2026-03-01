@@ -7,11 +7,11 @@
 - **Description:** The `.pre-commit-config.yaml` file contained a header typo.
 - **Resolution:** Corrected header from Case 01 to Case 04.
 
-## [PIPELINE] Asset Hydration & Bootstrap
+## [SECURITY] Pip Security Lock & Dependencies Conflict
 
 - **Status:** Open
-- **Severity:** Medium
-- **Description:** Per ADR 005, a mechanism is needed to sync heavy assets into the repository structure.
-- **Tasks to Resolve:**
-  - Create `tools/bootstrap.py` for directory setup and asset downloading.
-  - Upload initial asset packs to external storage and document links in README.
+- **Severity:** High
+- **Description:** Environment (`case04-env`) is running `pip 25.3`, which contains **CVE-2026-1703**. However, upgrading to `pip 26.0+` breaks `pip-tools`.
+- **Instruction:** Do **NOT** upgrade pip until `pip-tools` releases a fix (approx. Late Feb 2026). If `pip-audit` flags this, verify that you have added `pip` to the ignore list (or accepted the risk).
+- **Check Action:** Check `pip-tools` updates weekly.
+- **⏰ Next Check Date:** 2026-03-05

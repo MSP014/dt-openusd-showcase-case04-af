@@ -4,6 +4,14 @@
 **Status**: In Progress
 **Last Updated**: 2026-02-01
 
+> [!CAUTION] DISCUSSION ONLY
+>
+> - **We are currently in DISCUSSION MODE.**
+> - **We DO NOT write code.**
+> - **We DO NOT modify any code or files without explicit commands.**
+> - **We ONLY discuss the proposed problem and/or task.**
+> - **This state continues until Max explicitly states "Обсуждение завершено".**
+
 ---
 
 ## 🧩 EPIC: Hero Asset: Aircraft Refueler TZ-22 (AF-1)

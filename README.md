@@ -99,6 +99,14 @@ To keep this repository lightweight, heavy binary assets (USD Crates, Textures, 
 4. **Deps:** `pip install -r requirements.txt`
 5. **Hooks:** `pre-commit install`
 
+## 📜 Technical Stack
+
+- **Python**: 3.10
+- **USD**: 23.11+
+- **Houdini FX**: 21.0.596
+- **NVIDIA Omniverse / Isaac Sim**: 5.1.0
+- **NVIDIA cuOpt**: VRP Solver (Route optimisation)
+
 ---
 
 ## 📜 Changelog

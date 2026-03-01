@@ -111,5 +111,6 @@ To keep this repository lightweight, heavy binary assets (USD Crates, Textures, 
 
 ## 📜 Changelog
 
-- **2026-02-02:** Implemented external storage strategy for heavy assets (Git-agnostic).
-- **2026-01-23:** Initial repository bootstrap. Established **Showreel Protocol** (ADRs, Pre-commit, Hybrid Access).
+- **Week of Feb 23, 2026:** Designed and implemented a comprehensive 5-part USD Architecture Knowledge Base tailored for logistics and VRP simulation (`docs/knowledge_base/usd_architecture/`), while standardizing repository folder casing (`snake_case`) and resolving pre-commit hook bugs.
+- **Week of Jan 26, 2026:** Automated Jira plan synchronization to generate live `case 04 - implementation.md` Markdown plans, refactored sync scripts for strict linting compliance, and established external storage protocols for heavy assets.
+- **Week of Jan 19, 2026:** Bootstrapped the initial Readme-driven public repository with complete Tech Pack structure, strict dependency management (pip-tools), and fully configured pre-commit workflows.

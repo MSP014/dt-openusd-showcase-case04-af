@@ -103,6 +103,7 @@ To keep this repository lightweight, heavy binary assets (USD Crates, Textures, 
 
 - **Python**: 3.11.15 (standalone project environment)
 - **USD**: 23.11+
+- **Standalone OpenUSD bindings**: `usd-core==26.11` (`pxr`, Python 3.11)
 - **Houdini FX**: 22.0.466
 - **NVIDIA Omniverse / Isaac Sim**: 5.1.0
 - **NVIDIA cuOpt**: VRP Solver (Route optimisation)

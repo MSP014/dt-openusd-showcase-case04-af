@@ -24,3 +24,6 @@ pytest-cov
 pydantic
 numpy
 scipy
+
+# OpenUSD inspection and validation
+usd-core

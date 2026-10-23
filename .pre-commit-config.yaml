@@ -1,4 +1,7 @@
 # Pre-commit Guardrails - Case 04 (Air Field)
+default_language_version:
+  python: python3.11
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
@@ -40,7 +43,7 @@ repos:
       # Dependency Consistency Check (ADR 003 Protection)
       - id: pip-compile-check
         name: pip-compile-check
-        entry: conda run -n case04-env python -m piptools compile --no-header --quiet --dry-run requirements.in
+        entry: conda run -n case04-env python -m piptools compile --allow-unsafe --generate-hashes --reuse-hashes --no-header --quiet --dry-run requirements.in
         language: system
         files: ^requirements\.(in|txt)$
         pass_filenames: false

@@ -2,6 +2,7 @@
 
 # --- Internal Protocols & Planning (STRICT PRIVACY) ---
 protocols/
+.codex/
 docs/plans/case 04 - implementation.md
 
 # --- Heavy Work Directories (Project Structure) ---

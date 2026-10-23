@@ -25,8 +25,13 @@ We use `pip-tools` for deterministic builds.
 * **Lockfile:** `requirements.txt` (Generated via `pip-compile`). Contains exact versions + hashes.
 * **Workflow:**
     1. Edit `requirements.in`.
-    2. Run `pip-compile requirements.in`.
-    3. Commit both files.
+    2. In `case04-env` (Python 3.11.15), run
+       `python -m piptools compile --allow-unsafe --generate-hashes --reuse-hashes requirements.in`.
+       Add `--upgrade` when intentionally refreshing package versions.
+       `--allow-unsafe` also locks the installer dependencies required by
+       `pip-tools`, allowing hash-checked installation into a clean environment.
+    3. Install with `python -m pip install --require-hashes -r requirements.txt`.
+    4. Commit both files when the dependency change is ready for publication.
 
 ## Consequences
 

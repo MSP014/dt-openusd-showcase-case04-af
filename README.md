@@ -95,15 +95,15 @@ To keep this repository lightweight, heavy binary assets (USD Crates, Textures, 
 
 1. **Clone:** `git clone https://github.com/MSP014/dt-openusd-showcase-case04-af.git`
 2. **Hydration:** (See "Asset Hydration" above) - Extract assets to `assets/_external/`.
-3. **Env:** Create conda env: `conda create -n case04-env python=3.10`
-4. **Deps:** `pip install -r requirements.txt`
-5. **Hooks:** `pre-commit install`
+3. **Env:** Create the Python 3.11.15 environment and install locked dependencies: `conda env create -f environment.yml`
+4. **Activate:** `conda activate case04-env`
+5. **Hooks:** `python -m pre_commit install`
 
 ## 📜 Technical Stack
 
-- **Python**: 3.10
+- **Python**: 3.11.15 (standalone project environment)
 - **USD**: 23.11+
-- **Houdini FX**: 21.0.596
+- **Houdini FX**: 22.0.466
 - **NVIDIA Omniverse / Isaac Sim**: 5.1.0
 - **NVIDIA cuOpt**: VRP Solver (Route optimisation)
 
@@ -111,6 +111,7 @@ To keep this repository lightweight, heavy binary assets (USD Crates, Textures, 
 
 ## 📜 Changelog
 
-- **Week of Feb 23, 2026:** Designed and implemented a comprehensive 5-part USD Architecture Knowledge Base tailored for logistics and VRP simulation (`docs/knowledge_base/usd_architecture/`), while standardizing repository folder casing (`snake_case`) and resolving pre-commit hook bugs.
+- **Week of May 25, 2026:** Resolved the dependency-tooling security lock by updating pip-tools and refreshing the pinned dependencies and validation commands.
+- **Week of Mar 2, 2026:** Designed and implemented a comprehensive 5-part USD Architecture Knowledge Base tailored for logistics and VRP simulation (`docs/knowledge_base/usd_architecture/`), while standardizing repository folder casing (`snake_case`) and resolving pre-commit hook bugs.
 - **Week of Jan 26, 2026:** Automated Jira plan synchronization to generate live `case 04 - implementation.md` Markdown plans, refactored sync scripts for strict linting compliance, and established external storage protocols for heavy assets.
 - **Week of Jan 19, 2026:** Bootstrapped the initial Readme-driven public repository with complete Tech Pack structure, strict dependency management (pip-tools), and fully configured pre-commit workflows.

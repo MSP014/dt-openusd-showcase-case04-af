@@ -1,4 +1,5 @@
 # NVIDIA Showreel Standard - Universal Dependency Stack
+# Interpreter baseline: Python 3.11.15 (environment.yml).
 
 # Infrastructure & Orchestration
 pip-tools

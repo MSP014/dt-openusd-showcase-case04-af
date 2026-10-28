@@ -68,3 +68,6 @@ venv/
 *.code-workspace
 .DS_Store
 Thumbs.db
+# Local working instructions
+AGENTS.md
+.agents/

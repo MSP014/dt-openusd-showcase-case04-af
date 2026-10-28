@@ -1,10 +1,10 @@
 # Digital Twin Maturity Levels — Classification Framework
 
+
 **Source:** Academic research (Tao et al.) and industry frameworks
 **Date:** 2026-02-01
-**Context:** Reference documentation for Case 04 (Air Field) Digital Twin classification
-
----
+**Context:** Reference documentation for Case 03 (Data Center) Digital Twin classification
+Link: https://ieeexplore.ieee.org/document/9807313
 
 ## Overview
 
@@ -45,7 +45,6 @@ Digital Twin maturity levels classify the sophistication and capabilities of a d
 - Real-time data capture from sensors
 - Replicates the real-time state and changes in the physical entity
 - Continuous monitoring of asset condition and performance
-- Manual data entry or limited automated connection
 - Primary function: **"What is happening right now?"**
 
 **Use Cases:**
@@ -54,6 +53,7 @@ Digital Twin maturity levels classify the sophistication and capabilities of a d
 - Condition monitoring
 - Performance tracking
 - Asset visibility
+- **FUI/HUD overlays for real-time telemetry**
 
 **Data Flow:** Physical Asset → Sensors → Digital Twin (Visualisation)
 
@@ -71,7 +71,6 @@ Digital Twin maturity levels classify the sophistication and capabilities of a d
 - Can indirectly control the physical entity's operations
 - Enables informed decision-making and analysis
 - Captures and estimates effects of real-world events using historical data
-- Rudimentary situational awareness
 - Primary function: **"What should I do about it?"**
 
 **Use Cases:**
@@ -80,7 +79,6 @@ Digital Twin maturity levels classify the sophistication and capabilities of a d
 - Asset optimisation
 - Decision support systems
 - Supervisory control (operator-in-the-loop)
-- Logistics optimisation (e.g. Vehicle Routing Problem)
 
 **Data Flow:** Physical Asset ↔ Digital Twin ↔ Operator (Decision Support)
 
@@ -95,19 +93,9 @@ Digital Twin maturity levels classify the sophistication and capabilities of a d
 **Characteristics:**
 
 - Forecasts future state and operational processes
-- Couples real-time + historical data with Machine Learning or physical process-based models
+- Couples real-time + historical data with ML or physical process-based models
 - Predicts future behaviour and performance
-- Identifies patterns and assesses risks
-- Enables "what-if" scenario analysis
 - Primary function: **"What will happen next?"**
-
-**Use Cases:**
-
-- Risk mitigation
-- Capacity planning
-- Supply chain optimisation
-- Failure prediction
-- Performance forecasting
 
 **Data Flow:** Physical Asset → Digital Twin → ML/Simulation Models → Predictions → Operator
 
@@ -115,52 +103,47 @@ Digital Twin maturity levels classify the sophistication and capabilities of a d
 
 ---
 
-## Extended Levels (L4-L5)
+## Case 03 (Data Center) — Classification Justification
 
-Some frameworks extend beyond L3:
-
-- **L4: Optimisation** — Autonomous optimisation of processes based on predictions
-- **L5: Autonomous Co-existence** — Fully autonomous operation with minimal human intervention
-
----
-
-## Case 04 (Air Field) — Classification Justification
-
-**Classified Level:** **L2 (Decision Support / Supervisory)**
+**Classified Level:** **L1 (Informative / Connected)**
 
 ### Scenario
 
-Visualising the optimal refuelling order and tanker routes calculated based on flight priorities (departure times).
+Visualisation of a high-load AI Inference Farm cluster. The digital twin displays critical infrastructure parameters: Power consumption (active load), Cooling efficiency (temperature hot/cold aisles), and Network throughput.
 
-### L2 Characteristics Present
+### L1 Characteristics Present
 
-- ✅ **Real-time data:** Aircraft status (fuel levels, departure times)
-- ✅ **Historical/Context data:** Flight schedules, priorities
-- ✅ **Decision Support:** VRP (Vehicle Routing Problem) logic calculates optimal refuelling order
-- ✅ **Supervisory control:** HUD/FUI displays recommended actions to the operator
-- ✅ **Situational awareness:** System provides actionable intelligence
+- ✅ **Asset Visibility:** Detailed "SimReady" representation of server racks, cabling, and cooling units.
+- ✅ **Condition Monitoring:** Visualising temperature spikes ("Hot Spots") when a compute load increases.
+- ✅ **Reflecting the Real:** The environment reacts to the simulated workload (servers light up, fans spin up).
+- ✅ **Primary function:** Answers "Is the system stable under this render load?"
 
-### Why Not L1?
+### Why Not L0?
 
-L1 would only display: "Here are the aircraft and their current fuel levels."
-**L2 provides:** "Here is the optimal action plan based on data analysis."
+It connects the visual state of the server LEDs and heat haze to simulated data streams (Simulated "Inference Surge").
 
-### Why Not L3?
+### Why Not L2?
 
-L3 would predict: "In 2 hours, there will be a refuelling bottleneck due to peak traffic."
-**Case 04 solves:** Current optimisation task, not future forecasting.
+L2 implies active control (e.g., the twin automatically adjusting the cooling system based on data). Case 03 visualises the *reaction* of the cooling system, but for the purpose of this Showreel, it remains a monitoring tool (L1).
+
+---
+
+## Project Focus Areas
+
+1. **Photo-realism:** "SimReady" assets (USD) that look indistinguishable from real hardware.
+2. **Data-Driven Animation:** Using Python to drive thousands of LED indicators based on a CSV resource log.
+3. **Infrastructure Visualization:** Translating invisible metrics (Airflow, Power) into visible cues.
 
 ---
 
 ## References
 
 1. Tao et al. — Digital Twin Maturity Framework
-2. [ResearchGate: Digital Twin Classification Research](https://www.researchgate.net/)
-3. [Digital Twin Atlas](https://digital-twin-atlas.com/)
-4. Industry frameworks: Royal HaskoningDHV, BIM Community
+2. [Digital Twin Atlas](https://digital-twin-atlas.com/)
+3. NVIDIA "Omniverse Digital Twin" Whitepapers
 
 ---
 
-**Document Status:** Knowledge Base Reference
+**Document Status:** Knowledge Base Entry
 **Last Updated:** 2026-02-01
-**Maintained by:** Arthur (Case 04 Assistant)
+**Maintained by:** Case 03 Engineering

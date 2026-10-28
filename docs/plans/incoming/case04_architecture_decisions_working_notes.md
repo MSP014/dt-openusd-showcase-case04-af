@@ -1,5 +1,10 @@
 # Case 04 — Architecture Decisions / Рабочие заметки
 
+> **Historical source:** These notes have been restructured into the
+> [requirements collection](../requirements/README.md), which records current
+> document status, decision provenance and the next review steps. Retain this
+> text as the original discussion record; continue requirements review there.
+
 > **Статус:** Working Draft · 28 октября 2026 (Ереван, UTC+4)
 > **Назначение:** временный журнал ближайших архитектурных решений до их проверки и переноса в проектную документацию.
 > **Размещение:** `docs/plans/incoming/` в репозитории Case 04; рабочий черновик, не ADR и не утверждённое обновление knowledge base.

@@ -46,6 +46,8 @@ The digital twin calculates and visualises the **optimal refuelling sequence and
 This project follows a **README-driven structure** to manage the complexity of hybrid Houdini/Omniverse pipelines.
 
 - [**View Architecture Decision Records (ADR)**](docs/adr/) – Design notes on Naming Conventions, Security Guardrails, and VRP Logic integration.
+- [**Fuel Logistics Requirements**](docs/plans/requirements/README.md) – Working requirements, document status, recorded decisions and next review steps. The synthetic-data provider, fuel model, cuOpt integration and operator workflow remain proposed; the requirements do not establish an implemented runtime.
+- [**Omniverse Reference Clients**](tools/mcp/README.md) – Local Kit, OpenUSD and OmniUI query clients for development and reference work, separate from the logistics runtime.
 
 ## 📂 Repository Structure
 

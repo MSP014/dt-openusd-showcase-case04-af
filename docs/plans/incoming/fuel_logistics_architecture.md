@@ -1,10 +1,14 @@
 # Case 04 — Fuel Logistics Decision-Support Architecture
 
-**Status:** Proposed architecture baseline — not an implementation claim  
-**Date:** 28 October 2026  
-**Revision:** Dynamic scheduling, synthetic data, modern planning rules, historical KrAZ-221 + early TZ-22 configuration, interchangeable visual assets and depot replenishment  
-**Scope:** One airport fuel depot, aircraft refueller(s) and aircraft requiring or potentially requiring fuel  
-**Intended maturity:** L2 Digital Twin — optimisation and operator-in-the-loop decision support  
+> **Historical source:** This proposal has been restructured into the
+> [requirements collection](../requirements/README.md). Continue requirements
+> review there; this retained text records the original proposal and source links.
+
+**Status:** Proposed architecture baseline — not an implementation claim
+**Date:** 28 October 2026
+**Revision:** Dynamic scheduling, synthetic data, modern planning rules, historical KrAZ-221 + early TZ-22 configuration, interchangeable visual assets and depot replenishment
+**Scope:** One airport fuel depot, aircraft refueller(s) and aircraft requiring or potentially requiring fuel
+**Intended maturity:** L2 Digital Twin — optimisation and operator-in-the-loop decision support
 **Data source:** Synthetic, deterministic scenarios; no connection to an operational airport system
 
 ## 1. Objective and boundaries

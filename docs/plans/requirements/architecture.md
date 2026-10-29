@@ -7,7 +7,7 @@ and event contracts incomplete
 
 **Primary decision:** D-001
 
-**Review questions:** Q-01, Q-02; asset-swap dependency Q-11
+**Review questions:** Q-01, Q-02, Q-13; asset-swap dependency Q-11
 
 See the [requirements index](README.md) for decision status, review order and the
 resume checkpoint. Component names and interfaces below are conceptual, not
@@ -22,7 +22,7 @@ implemented Python classes or a final package layout.
 | Physical fuel and service constraints (Module 2) | Flight legs, profiles, current fuel and service readiness | Calculate uplift, travel/service times, replenishment needs and physical-feasibility diagnostics | Does not generate arbitrary synthetic demand; see the [fuel model](fuel_and_service_model.md) |
 | Delay impact and priority assessment (Module 1) | ETA/ETD, flight/cargo category, readiness, time margin and policy | Produce an explainable internal priority score | Does not determine landing priority; see [planning](planning_and_operator_workflow.md) |
 | cuOpt problem builder and solver integration (Module 3) | Current state, demands, priorities, network, time windows and commitments | Produce a proposed service order, routes, timings and feasibility/unserved-demand evidence | Does not apply its proposal to current world state |
-| Operator command/acceptance path | UI actions and proposed plan | Express manual requests, overrides and acceptance/rejection | Command ownership and acceptance scope remain open |
+| Execution authorisation and operator control | Validated proposed plan, operating policy and UI actions | Support automatic dispatch and mode-dependent confirmation/intervention | Automatic dispatch is required; mode definitions, command ownership and approval boundaries remain open (Q-13) |
 | USD Presentation Adapter | State and the appropriate plan/proposal information | Bind logical entities to scene objects and author display state | Projection rules are owned by the [USD contract](usd_presentation_contract.md) |
 | Omniverse presentation | USD scene, telemetry and proposed/accepted plan information | Show routes, assignments, fuel, delays and reasons for changes; collect operator actions | Visual display does not establish execution or solver correctness |
 
@@ -33,9 +33,11 @@ of runtime logistics state through this requirements split.
 
 **D-001 — agreed in discussion:** `WorldState` is the single authoritative source
 of current calculated state. The Synthetic Data Provider supplies initial data
-and events. Simulation rules and the necessary operator confirmations govern
-changes. cuOpt proposes optimisation results and must not independently mutate
-the actual world.
+and events. Simulation rules and the execution policy govern changes. Automatic
+dispatch is required by the 29 October clarification; operator confirmation is
+mode-dependent and still requires definition (Q-13). cuOpt returns results to the
+execution layer rather than independently mutating WorldState. This ownership
+boundary does not require a human to approve every result.
 
 The original proposal also assigns snapshot/event-log publication and
 “authoritative simulated changes” to the provider. This wording is retained as
@@ -61,8 +63,10 @@ flowchart TD
     Priority --> Builder
     Builder --> Solver[cuOpt]
     Solver --> Proposal[Proposed plan]
+    Proposal --> Authorise[Execution authorisation - mode contract open]
     Proposal --> UI[Omniverse and operator]
-    UI -->|Commands and acceptance or rejection| Apply
+    UI -->|Commands and intervention| Authorise
+    Authorise -->|Automatic or operator-authorised actions| Apply
     State --> Adapter[USD Presentation Adapter]
     Adapter --> Scene[USD scene and telemetry]
     Scene --> UI
@@ -111,12 +115,15 @@ second under the existing USD contract.
 
 - **Q-01:** Name the event/command applier, permitted mutations, snapshot
   publisher and event-log owner. Reconcile the provider's publication wording
-  with D-001; specify how a result becomes an accepted action.
+  with D-001; specify how a result becomes an accepted action under Q-13.
 - **Q-02:** Define simulation clock ownership, ordering of simultaneous events,
   replay inputs, reset behaviour and USD timeline relationship. State the limits
   of reproducibility when a solver is involved.
 - **Q-11 dependency:** Specify minimum identity, spatial and capability metadata
   for a valid asset/profile swap without coupling core logic to scene paths.
+- **Q-13:** Define execution authorisation for automatic dispatch and any
+  operator-confirmed mode. Keep the mode policy separate from solver output and
+  the state applier; automatic operation must still use validated actions.
 
 Before approving this document, review the owner of every data-changing arrow
 and its failure path against the domain and operator requirements. Keep these

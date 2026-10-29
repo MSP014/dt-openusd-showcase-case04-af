@@ -1,149 +1,106 @@
-# Digital Twin Maturity Levels — Classification Framework
+# Case 04 — Digital Twin Classification and Claim Boundaries
 
+**Status:** Source-grounded terminology note; runtime capability and operational
+maturity have not been validated
 
-**Source:** Academic research (Tao et al.) and industry frameworks
-**Date:** 2026-02-01
-**Context:** Reference documentation for Case 03 (Data Center) Digital Twin classification
-Link: https://ieeexplore.ieee.org/document/9807313
+**Last updated:** 29 October 2026
 
-## Overview
+**Public description:** Synthetic-data-driven L2-style Decision-Support Prototype
 
-Digital Twin maturity levels classify the sophistication and capabilities of a digital twin, progressing from basic descriptive models to highly autonomous and predictive systems. The classification extends from **L0 (static replica)** to **L5 (autonomous co-existence)**, with the core operational levels being L1-L3.
+## Source and interpretation
 
----
+The repository's [reference paper](digital_twins_a_maturity_model_for_their_classification_and_evaluation.pdf)
+is **Uhlenkamp et al. (2022), Digital Twins: A Maturity Model for Their
+Classification and Evaluation**, IEEE Access 10, pp. 69605–69635,
+[DOI: 10.1109/ACCESS.2022.3186353](https://doi.org/10.1109/ACCESS.2022.3186353).
+The previous attribution to Tao et al. was incorrect for this paper.
 
-## Level Definitions
+The paper assesses 31 dimensions grouped into context, model, computing
+capabilities, data, control, integration and human–machine interaction. Relevant
+discussion appears on pp. 69615–69616 (models/analytics and interaction) and in
+Section IV/Figure 6; the detailed dimensions are in Tables 12–18. It distinguishes
+monitoring/diagnosis, prediction and prescriptive analysis, and considers human
+and automatically triggered operation separately.
 
-### L0: No Twin / Static Model
+This multidimensional model must not be presented as a universal L0–L5 ladder.
+The shorthand below is a **project communication convention**, not a quotation
+of the paper's levels, a calculated maturity score or a standards assessment.
+The application of that convention to Case 04 is a project interpretation.
 
-**Descriptor:** Descriptive / Static Replica
+## Working distinction between monitoring, decisions and prediction
 
-**Characteristics:**
+| Project shorthand | Main question | Capability evidence needed |
+| --- | --- | --- |
+| L0-style representation | What does the system look like? | Structured assets and scene representation; no operational data or decision loop implied |
+| L1-style monitoring | What is happening? | Data-driven state/status presentation and traceable updates |
+| L2-style decision support | What action should be taken, given current inputs and constraints? | Calculated alternatives, feasible service/route decisions, an execution policy and measurable comparison with a baseline |
+| Predictive capability, sometimes called L3 in project shorthand | What is likely to happen next? | An explicitly defined forecasting model, horizon and validation against appropriate reference outcomes |
 
-- No active digital twin or only a static 3D model
-- Describes and depicts the physical entity without real-time data connection
-- Measurements are disparate or non-existent
-- Sensors are not interconnected
+L2-style here adds calculated decisions to state visualisation. Prediction is
+a separate capability: decision support can use forecasts, but the L2 label
+does not itself prove forecasting. Using announced arrival times, simulating a
+candidate route or estimating its completion time does not establish a validated
+model of future real-world events.
 
-**Use Cases:**
+Likewise, operator involvement and automation must be described explicitly.
+Decision support does not by definition require a person to approve every
+dispatch. Automatic dispatch inside a synthetic simulation does not establish
+autonomous control of physical airport equipment. The [operating-mode contract](../plans/requirements/planning_and_operator_workflow.md#operator-acceptance-and-unresolved-result-handling)
+remains under review.
 
-- Visualisation
-- Planning and communication
-- CAD/BIM models for documentation
-- Geometry and material representation
+## Case 04 scope and current evidence
 
-**Key Limitation:** No dynamic behaviour or connection to the physical world.
+The intended demonstration requires two identical refuellers for active/standby
+duty rotation and fault tolerance, three aircraft initially on stands, two
+inbound flights and an optional sixth unscheduled arrival. The planned system will calculate service order and
+ground routes using readiness, deadlines, travel/service time, aviation fuel and
+tractor-diesel constraints.
+Automatic dispatch is a required capability; the detailed operator modes remain
+open.
 
----
+The present repository contains requirements, reference material and development
+utilities. The logistics runtime and domain validation remain unimplemented:
+`src/` is a placeholder and `tests/test_dummy.py` is an infrastructure smoke test.
+The L2-style description therefore states the intended capability, not an
+already demonstrated operational maturity.
 
-### L1: Status / Reflecting the Real with the Virtual
+| Dimension | Current boundary | Planned evidence |
+| --- | --- | --- |
+| Data origin | No operational airport feed; synthetic provider still planned | Deterministic inputs, declared assumptions, scenario/event provenance and replay |
+| Decision logic | No implemented logistics solver/model | Physical validation and cuOpt-versus-EDF comparisons |
+| State and control | Requirements only; mode semantics open | Consistent state transitions, automatic dispatch and operator intervention under reviewed rules |
+| Physical connection | No live sensor or actuation link to an airport | Separate integration, calibration and operational validation would be required |
+| Presentation | Assets/pipeline preparation and planned runtime | Visible routes, fuel, assignments and reasons for changes tied to the same state/plan |
+| Prediction | No validated forecasting claim | Define a separate forecasting model and evidence if this enters scope |
 
-**Descriptor:** Informative (Real-Time Data) / Connected - Manual
+## Why synthetic data is a deliberate trade-off
 
-**Characteristics:**
+No operational feed from an airport such as Zvartnots has been made available to
+this project. Access to schedules, vehicle telemetry and service records would
+require cooperation, access agreements, integration and data-quality work.
+This statement does not imply that access has been requested or refused.
 
-- Real-time data capture from sensors
-- Replicates the real-time state and changes in the physical entity
-- Continuous monitoring of asset condition and performance
-- Primary function: **"What is happening right now?"**
+Synthetic scenarios make it possible to develop and reproduce schedule changes,
+resource shortages and routing choices without that dependency. Once implemented
+and tested, resource conservation, feasible planning, state ownership, USD
+projection and operator/automation behaviour remain useful engineering evidence.
 
-**Use Cases:**
+The limitation is that success on those scenarios does not demonstrate airport
+calibration, real-data robustness, physical control or operational safety. The
+data source, input assumptions and validation domain must remain visible.
 
-- Real-time status dashboards
-- Condition monitoring
-- Performance tracking
-- Asset visibility
-- **FUI/HUD overlays for real-time telemetry**
+Use **Synthetic-data-driven L2-style Decision-Support Prototype — Under
+Development** in public descriptions. Describe individual capabilities as
+implemented only when there is corresponding evidence. Avoid an unqualified
+claim of a live operational L2 Digital Twin or globally optimal real-time routing.
 
-**Data Flow:** Physical Asset → Sensors → Digital Twin (Visualisation)
+## Next evidence to establish
 
-**Key Capability:** Reflects current conditions dynamically.
-
----
-
-### L2: Controlling the Real with the Virtual
-
-**Descriptor:** Informative (Real-Time + Historical Data) / Connected - Supervisory / Decision Support
-
-**Characteristics:**
-
-- Real-time data + historical data or benchmarks
-- Can indirectly control the physical entity's operations
-- Enables informed decision-making and analysis
-- Captures and estimates effects of real-world events using historical data
-- Primary function: **"What should I do about it?"**
-
-**Use Cases:**
-
-- Predictive maintenance (early stage)
-- Asset optimisation
-- Decision support systems
-- Supervisory control (operator-in-the-loop)
-
-**Data Flow:** Physical Asset ↔ Digital Twin ↔ Operator (Decision Support)
-
-**Key Capability:** Supports operational decisions through analysis and recommendations.
-
----
-
-### L3: Anticipating the Real with the Virtual
-
-**Descriptor:** Predictive / Forecasting
-
-**Characteristics:**
-
-- Forecasts future state and operational processes
-- Couples real-time + historical data with ML or physical process-based models
-- Predicts future behaviour and performance
-- Primary function: **"What will happen next?"**
-
-**Data Flow:** Physical Asset → Digital Twin → ML/Simulation Models → Predictions → Operator
-
-**Key Capability:** Predictive analytics and future state forecasting.
-
----
-
-## Case 03 (Data Center) — Classification Justification
-
-**Classified Level:** **L1 (Informative / Connected)**
-
-### Scenario
-
-Visualisation of a high-load AI Inference Farm cluster. The digital twin displays critical infrastructure parameters: Power consumption (active load), Cooling efficiency (temperature hot/cold aisles), and Network throughput.
-
-### L1 Characteristics Present
-
-- ✅ **Asset Visibility:** Detailed "SimReady" representation of server racks, cabling, and cooling units.
-- ✅ **Condition Monitoring:** Visualising temperature spikes ("Hot Spots") when a compute load increases.
-- ✅ **Reflecting the Real:** The environment reacts to the simulated workload (servers light up, fans spin up).
-- ✅ **Primary function:** Answers "Is the system stable under this render load?"
-
-### Why Not L0?
-
-It connects the visual state of the server LEDs and heat haze to simulated data streams (Simulated "Inference Surge").
-
-### Why Not L2?
-
-L2 implies active control (e.g., the twin automatically adjusting the cooling system based on data). Case 03 visualises the *reaction* of the cooling system, but for the purpose of this Showreel, it remains a monitoring tool (L1).
-
----
-
-## Project Focus Areas
-
-1. **Photo-realism:** "SimReady" assets (USD) that look indistinguishable from real hardware.
-2. **Data-Driven Animation:** Using Python to drive thousands of LED indicators based on a CSV resource log.
-3. **Infrastructure Visualization:** Translating invisible metrics (Airflow, Power) into visible cues.
-
----
-
-## References
-
-1. Tao et al. — Digital Twin Maturity Framework
-2. [Digital Twin Atlas](https://digital-twin-atlas.com/)
-3. NVIDIA "Omniverse Digital Twin" Whitepapers
-
----
-
-**Document Status:** Knowledge Base Entry
-**Last Updated:** 2026-02-01
-**Maintained by:** Case 03 Engineering
+1. Implement the agreed state/resource model and document scenario provenance.
+2. Compare EDF and cuOpt on the [six-flight scenario](../plans/requirements/scenarios_and_validation.md),
+   reporting deadlines, coverage, distance, estimated tanker diesel/cost and
+   calculation overhead, including equal or worse results.
+3. Resolve the automatic/assisted/manual operating-mode questions and demonstrate
+   the adopted execution and intervention behaviour.
+4. Validate presentation and replay against the same calculation state.
+5. Assess real-data integration and forecasting separately if later authorised.

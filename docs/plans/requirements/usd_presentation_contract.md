@@ -7,7 +7,7 @@ compatibility and binding/migration decisions unresolved
 
 **Primary decision:** D-002
 
-**Review question:** Q-10; dependencies Q-01, Q-05, Q-06, Q-08
+**Review question:** Q-10; dependencies Q-01, Q-05, Q-06, Q-08, Q-13
 
 This draft records intended changes beside the existing
 [USD master contract](../../knowledge_base/usd_architecture/00_project_usd_contract.md)
@@ -60,8 +60,11 @@ Define the minimum asset/profile binding metadata and behaviour when an ID or
 prim cannot be resolved; the exact binding file/schema is still proposed.
 
 The presentation needs to distinguish current state, a proposed plan and an
-accepted plan. Routes, assignment labels, fuel/status displays and summaries
-should describe the same corresponding state/plan result. How versions are
+accepted plan. Acceptance may follow the automatic execution policy or an
+operator decision, depending on the operating-mode contract still open under
+Q-13; do not infer manual confirmation of every dispatch. Routes, assignment
+labels, fuel/status displays and summaries should describe the same corresponding
+state/plan result. How versions are
 identified, stale proposals are labelled and failed projections are handled
 remains to be reviewed rather than guessed.
 

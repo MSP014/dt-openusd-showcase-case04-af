@@ -100,7 +100,8 @@ Proposed conservation requirements from the architecture note:
 - Depot reloads are explicit actions with duration, not instantaneous invented
   fuel. Delivery and loading rates, setup and completion times need profiles.
 - Diesel is accounted for separately through travel and any explicitly selected
-  operating-mode model; aviation-fuel replenishment does not refill the tractor.
+  operating-mode model; aviation-fuel loading alone does not reset the tractor's
+  diesel balance. Record diesel replenishment separately under D-016.
 - Negative stock, over-capacity stock, service before readiness, service after
   departure and movement without elapsed travel are invalid outcomes.
 
@@ -109,6 +110,15 @@ at the Fuel Depot together with the trailer's aviation fuel; the actual diesel
 facility, refilling time, supply quantities and reachable-return rules remain
 to be specified. Unlimited aviation-fuel supply (D-004) is **not** automatically
 an agreed unlimited-diesel-stock model.
+
+The [D-017 diesel-return and assistance requirement](domain_and_state_machines.md#diesel-reserve-and-exceptional-assistance-d-017)
+requires normal checks to preserve a feasible return to the depot with reserve.
+If that invariant nevertheless fails, the second tractor supplies diesel from
+its own tank. Calculate the amount needed for the recipient's protected return
+and check tank headroom, donor approach and the donor's remaining return reserve.
+Record donor/recipient balances, elapsed transfer time and any modelled
+consumption explicitly. Diesel assistance does not transfer aviation fuel or
+create an unaccounted fuel supply. Equipment and numerical parameters remain open.
 
 ## Ground travel and service feasibility
 
@@ -139,15 +149,17 @@ the detailed time model remains to be selected.
 
 ## Open questions and next steps
 
-- **Q-03 dependency:** Supply explicit aviation-fuel-only, diesel-only and
-  combined-shortage cases for tanker transition 4. Define feasible travel to a
-  replenishment location without approving the transition in this document.
+- **Q-03 dependency:** Quantify resource guards for the agreed D-015
+  aviation-fuel-only return and D-017 diesel assistance. Review the remaining
+  diesel-only and combined-shortage transitions, recovery lifecycle and donor
+  failure cases separately; assistance is required, its detailed rules remain open.
 - **Q-06:** Choose canonical units, density, capacities, tolerances and the
   usable-fuel definition. Select the departure-fuel calculation and reserve
   framework, and reconcile fuel-check timing with ETD changes and late arrivals.
 - **Q-07:** Detail the agreed depot diesel replenishment capability, minimum reserve,
   reachable-return calculation, travel/idle/pumping consumption assumptions,
-  loading rates and setup/completion durations.
+  loading rates and setup/completion durations. Define tractor-to-tractor
+  transfer equipment/rate, quantity calculation and donor/recipient constraints.
 - **Q-11 dependency:** Verify equipment variant and profile applicability before
   promoting candidate reference values to approved model parameters.
 

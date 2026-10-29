@@ -1,43 +1,61 @@
-# Case 04: Air Field (Aviation Logistics Digital Twin)
+# Case 04: Air Field — Aviation Fuel Logistics
 
 > [!WARNING]
-> **Work in Progress:** This project is currently under active development. Some links and assets may be placeholders.
+> **Under Development:** Requirements and asset/pipeline preparation are in progress. The logistics runtime, cuOpt integration and operational validation are planned. Some links and visual artefacts are placeholders.
 
 ---
 
-> **Role:** L2 Digital Twin (Optimization & Decision Support)
-> **Stack:** SideFX Houdini, NVIDIA Omniverse, NVIDIA cuOpt (VRP Solver)
+> **Role:** Synthetic-data-driven L2-style Decision-Support Prototype
+> **Planned pipeline:** SideFX Houdini → OpenUSD → NVIDIA Omniverse; NVIDIA cuOpt for constrained route planning
 
 ---
 
 ## 📋 Project Overview
 
-This repository showcases a prototype **Aviation Logistics Digital Twin (Level L2)** demonstrating algorithmic optimisation and decision support for airfield ground operations. The case study centres on refuelling logistics at an active apron, visualising optimised routing and resource allocation in real-time.
+This project is developing a **Synthetic-data-driven L2-style Decision-Support Prototype** for apron refuelling. The planned demonstration combines a cinematic airfield, procedural assets and inspectable logistics decisions: which aircraft to service, which route to take and when to replenish the tanker.
+
+**Current implementation — Under Development:** `src/` contains a placeholder, and `tests/test_dummy.py` is an infrastructure smoke test, not logistics validation. The repository currently provides working requirements, environment/dependency setup and development/reference utilities. It does not yet provide a working routing solver, synthetic-data generator or interactive logistics runtime.
 
 **Key Use Case:**
-The digital twin calculates and visualises the **optimal refuelling sequence and tanker routing** based on flight priorities (departure times). Using NVIDIA cuOpt's Vehicle Routing Problem (VRP) solver, the system generates efficient paths that minimise tanker travel time whilst respecting aircraft schedules. HUD overlays display aircraft fuel status, queue positions, and tanker assignments. This exemplifies how L2 Digital Twins move beyond passive monitoring to provide actionable operational intelligence.
+**Planned:** Two identical KrAZ-221 + TZ-22 refuellers alternate active/standby duty to serve a schedule with **three aircraft on stands, two inbound flights and a possible sixth unscheduled arrival**. The system is intended to plan feasible service sequences and ground routes using departure/service deadlines, arrival readiness, travel distances, service times, aviation-fuel capacity and tractor-diesel constraints. Planned HUD overlays will expose assignments, fuel and reasons for replanning.
+
+Two refuellers are required, including for fault tolerance. Normal fuel checks must preserve enough tractor diesel to return to the depot with reserve. If a vehicle nevertheless cannot reach it, the second must transfer enough diesel from its own tractor tank to restore that return while retaining its own return reserve. This recovery capability is planned; its equipment, timing and detailed lifecycle remain under requirements review.
+
+Automatic dispatch is a required capability of the planned system. The boundaries between automatic operation, operator-confirmed recommendations and manual intervention remain under requirements review; manual approval of every dispatch is not a settled rule. Replanning latency and solution quality still need measurement, and global optimality is not claimed.
 
 **Project Focus:**
 
-- **Optimisation Logic (VRP):** NVIDIA cuOpt integration for real-time route calculation
-- **Multi-Agent Visualisation:** Coordinated state management for aircraft (Waiting/Refuelling) and tankers (Routing/Pumping)
-- **Decision Support:** Clear visual representation of system recommendations and resource allocation
+- **Planned — Constrained routing:** Evaluate cuOpt for event-driven replanning with resource and service-window constraints.
+- **Planned — State visualisation:** Separate aircraft, fuel-request and refueller lifecycles, with consistent fuel accounting and USD presentation.
+- **Planned — Decision support and dispatch:** Explain recommendations and support automatic dispatch under a reviewed operator-mode contract.
+
+### Why evaluate cuOpt?
+
+Earliest Deadline First (EDF) is the planned simple baseline. It may already meet departure deadlines in straightforward cases. The additional routing objective is to **reduce total refueller travel and estimated diesel cost while satisfying the same service and resource constraints**. Sorting by deadline alone does not optimise the ground route or replenishment sequence.
+
+The planned comparison uses the same revealed schedule/events, two-refueller fleet and rotation rules, road graph, fuel/service model and feasibility checks for EDF and cuOpt. It will report deadline performance, served demand, total distance and diesel consumption/cost across both refuellers, depot visits and calculation overhead. With at most six flights, GPU necessity and a cuOpt advantage are unproven; equal or worse results must be reported. See the [benchmark requirements](docs/plans/requirements/scenarios_and_validation.md#earliest-deadline-first-comparison).
+
+### Synthetic data and maturity
+
+Synthetic inputs are a deliberate development trade-off. This project has no operational data feed from an airport such as Zvartnots; obtaining and validating such data would require cooperation, access agreements and integration work. Reproducible scenarios allow the resource accounting, routing decisions, state transitions and presentation to be developed and tested without that dependency.
+
+This limits claims about real-world calibration and operational readiness, while preserving the value of those engineering results once demonstrated. **L2-style** describes the intended decision-support capability, not a certified maturity level or a live operational Digital Twin. Forecasting, operator involvement and physical-data connectivity need separate evidence; see the [classification and limitations](docs/knowledge_base/digital_twin_maturity_levels.md).
 
 ---
 
-## 🎯 Technical Highlights
+## 🎯 Planned Technical Evidence
 
-*This setup demonstrates an **L2 Digital Twin (Optimization)**, moving beyond visualization to algorithmic decision support.*
+*These are intended deliverables, not completed runtime features.*
 
-- **Logistics Logic (VRP):** Visualizing the "Vehicle Routing Problem" (Traveling Salesman) for airfield tankers using **NVIDIA cuOpt** logic.
-- **Houdini -> USD Pipeline:** Procedural generation of apron markings and ground support equipment.
-- **Multi-Agent State:** Managing state visualization for Planes (Waiting/Refueling) and Tankers (Routing/Pumping).
+- **Planned — Logistics evidence:** Compare cuOpt routing with EDF, including deadlines, route distance, tanker diesel and replenishment.
+- **Under Development — Houdini → USD pipeline:** Prepare procedural airfield and refueller assets for composition and presentation.
+- **Planned — State evidence:** Demonstrate consistent aircraft/request/tanker states and resource changes across Python and USD.
 
 ## 👁️ Visual Proof
 
-> *Placeholders for future GIFs*
+> *Planned evidence; visual artefacts are not available yet.*
 
-1. **Optimal Route Visualization:** `![VRP Graph](docs/img/vrp_graph_placeholder.gif)`
+1. **Route Comparison — Planned:** `![VRP Graph](docs/img/vrp_graph_placeholder.gif)`
 2. **Refueling FUI:** `![Refueling HUD](docs/img/refueling_hud_placeholder.png)`
 3. **Apron Layering:** `![USD Layers](docs/img/usd_composition_placeholder.png)`
 
@@ -63,8 +81,8 @@ This project follows a **README-driven structure** to manage the complexity of h
 │   ├── adr/          # Architecture Decision Records
 │   ├── knowledge_base/  # Reference documentation (Digital Twin frameworks, VRP theory)
 │   └── plans/        # Implementation plans & tech debt
-├── src/              # Core logic and scripts
-├── tests/            # Validation and testing suite
+├── src/              # Planned logistics runtime; currently a placeholder
+├── tests/            # Infrastructure smoke test; domain validation planned
 └── tools/            # Internal pipeline utilities
 ```
 
@@ -77,8 +95,8 @@ This project follows a **README-driven structure** to manage the complexity of h
 > This repository follows a strict **"Source vs. Artifact"** philosophy:
 >
 > - **Houdini (Fabricator):** The procedural "factory" where assets are generated. Source files (`.hip`) are proprietary and **excluded** from this repository.
-> - **USD (Artifact):** The "product" of the factory. These are the optimized files needed to run the Digital Twin in Omniverse.
-> - **Synthetic Data:** Telemetry streams are emulated via Python generators to simulate robust edge cases (e.g., extreme thermal loads) that are rarely captured in real-world data.
+> - **USD (Artifact):** The intended output of asset preparation, for composition and presentation in Omniverse.
+> - **Synthetic Data — Planned:** Deterministic flight schedules, arrivals, readiness changes and fuel-request events will exercise the logistics model. The generator and runtime resource accounting remain to be implemented.
 
 ### 📦 Asset Hydration
 
@@ -101,14 +119,14 @@ To keep this repository lightweight, heavy binary assets (USD Crates, Textures, 
 4. **Activate:** `conda activate case04-env`
 5. **Hooks:** `python -m pre_commit install`
 
-## 📜 Technical Stack
+## 📜 Development Baseline and Planned Runtime
 
 - **Python**: 3.11.15 (standalone project environment)
 - **USD**: 23.11+
 - **Standalone OpenUSD bindings**: `usd-core==26.11` (`pxr`, Python 3.11)
 - **Houdini FX**: 22.0.466
-- **NVIDIA Omniverse / Isaac Sim**: 5.1.0
-- **NVIDIA cuOpt**: VRP Solver (Route optimisation)
+- **NVIDIA Omniverse / Isaac Sim**: 5.1.0 planned presentation/runtime baseline; logistics integration pending
+- **NVIDIA cuOpt**: Planned VRP solver evaluation; interface, integration and benchmark results pending
 
 ---
 

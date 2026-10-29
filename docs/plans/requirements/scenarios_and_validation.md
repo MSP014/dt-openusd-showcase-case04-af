@@ -1,13 +1,13 @@
 # Fuel Logistics — Scenarios and Validation
 
 **Status:** Working draft; 3 + 2 + optional 1 schedule and two-refueller rotation
-recorded; exceptional diesel assistance required; EDF benchmark specified;
-fixtures, cost model and numerical thresholds open
+recorded; depot transitions 5–7 and three-stock guards recorded; exceptional
+diesel assistance required; EDF benchmark specified; numerical fixtures open
 
 **Last updated:** 29 October 2026
 
-**Primary decisions:** D-009, D-016, D-017; D-006 schedule clarified on 29 October 2026;
-resource branch D-015
+**Primary decisions:** D-009, D-016, D-017, D-018–D-021;
+D-006 schedule clarified on 29 October 2026; resource branch D-015
 
 **Review question:** Q-12; dependencies Q-02, Q-05–Q-09, Q-11, Q-13
 
@@ -47,7 +47,8 @@ arrival/service-readiness times and deadlines.
 
 Compare EDF with the proposed cuOpt sequence, using the same travel/service,
 demand, fuel and readiness model. Validate aviation-fuel capacity, diesel return
-reserve, stand readiness and service time windows for both.
+reserve, independent pump-petrol sufficiency, stand readiness and service time
+windows for both.
 
 The minimum visible proof should let a recruiter follow a change in schedule
 and its effect on service order and tanker route. The technical evidence should
@@ -96,9 +97,10 @@ Fair comparison requirements:
   demands and operating mode. Apply the same D-016 rotation rules to both
   planners, and the same D-017 assistance rules when that exception is exercised.
   Neither receives unannounced future events or free resource resets.
-- Include arrival readiness, aviation-fuel capacity, diesel reserve, loading
-  time and committed actions in both paths. Do not weaken EDF's resource checks
-  merely to create a solver advantage.
+- Include arrival readiness, aviation-fuel capacity, diesel reserve, pump-petrol
+  stock/consumption/reserve, timed loading/internal depot travel and committed
+  actions in both paths. Apply the same queue-free post assumption and selective
+  replenishment rules. Do not weaken EDF's checks to create a solver advantage.
 - Run the same fixed event timeline, including the two inbound flights, optional
   F06 and selected ETA/ETD changes. Separate algorithmic replanning behaviour
   from human approval delay by using equivalent mode rules.
@@ -107,6 +109,8 @@ Fair comparison requirements:
   Account for both refuellers, including the relieved vehicle's depot return and
   the standby vehicle's departure; report per-vehicle values and fleet totals.
   Report monetary fuel cost only with declared price and consumption assumptions.
+  Report pump petrol separately from road diesel and delivered aviation fuel;
+  any combined monetary objective requires an explicit cost policy.
 - Report any coverage/lateness trade-off explicitly; dropping a job or missing
   more deadlines is not an unqualified fuel-saving improvement. Keep aviation
   fuel delivered separate from the tractor diesel being minimised.
@@ -119,6 +123,7 @@ Fair comparison requirements:
 | Straightforward schedule with generous margins | EDF may already be sufficient; report ties without manufacturing a benefit |
 | Stands at contrasting distances, with several deadline-feasible orders | Check whether route/diesel cost falls without worse service coverage or lateness |
 | Capacity-driven replenishment | Account for depot detours, loading and tractor diesel under the same rules |
+| Pump-petrol constraint despite sufficient aviation fuel and diesel | Reject an infeasible service assignment; replenish petrol before depot departure under transition 7 |
 | Active/standby relief under D-016 | Check request eligibility and resource guards, preserve current service, and account for both vehicles' travel and replenishment |
 | Inbound readiness, revised ETA/ETD and possible F06 | Replan from the actual state while preserving current service and respecting known information |
 | Insufficient resources or missing demand data | Expose infeasibility/unknowns instead of fabricating a successful comparison |
@@ -157,9 +162,9 @@ specific aircraft or complete route-feasibility proofs.
 | B | 13,000 L then 11,000 L | Combined 24,000 L exceeds one load; replenishment is needed between those full deliveries |
 | C | 9,000 L then 10,000 L, followed by a new 7,000 L request | First two leave 3,000 L; replenish before the next full delivery |
 
-Each case still needs actual paths, diesel feasibility, loading/service times,
-stand readiness and time-window checks. Partial depletion alone does not force
-a depot return. Each initial job fitting one full load is a scope proposal;
+Each case still needs actual paths, diesel and pump-petrol feasibility,
+loading/service times, stand readiness and time-window checks. Partial depletion
+alone does not force a depot return. Each initial job fitting one full load is a scope proposal;
 larger individual demands need a separate agreed policy.
 
 Assess cases B/C against the agreed D-015 aviation-fuel shortage branch and
@@ -168,6 +173,33 @@ combined-shortage transitions or the detailed D-017 recovery contract. Depot
 diesel replenishment is now agreed conceptually under D-016, while its rates,
 quantities and timing remain open.
 See [resource accounting](fuel_and_service_model.md#depot-and-resource-accounting).
+
+## Depot operations and three-stock checks
+
+Validate [transitions 5–7](domain_and_state_machines.md#depot-loading-and-departure)
+and [D-021](fuel_and_service_model.md#three-refueller-fuel-stocks-d-021) with
+explicit, reproducible inputs once numerical profiles are selected:
+
+| Case | Required behaviour |
+| --- | --- |
+| Arrival at depot | Enter `Loading` automatically; no stock is refilled at the instant of arrival |
+| Multiple required post visits | Replenish sequentially with elapsed service and travel time; remain `Loading` between posts |
+| Aviation-fuel-only replenishment for an assignment | Skip unnecessary replenishment when diesel and pump petrol already cover the job and reserves; full tanks are not an assigned-departure prerequisite |
+| Valid assignment after replenishment | Independently check all three stocks and depart `Loading -> ToAircraft` without an intermediate `Idle` |
+| Insufficient pump petrol | Remain `Loading` for necessary replenishment and repeat checks, even when aviation fuel and diesel are sufficient |
+| No assigned request | Complete required Standby replenishment, travel to depot parking while `Loading`, then enter `Idle` on actual arrival |
+| Both vehicles visiting depot | Do not create a post-occupancy queue; retain each vehicle's sequential work and elapsed time; parking can hold both |
+| Any aircraft-service assignment path | Apply all three guards to `Idle -> ToAircraft`, direct post-service continuation, standby relief and depot departure |
+
+Record balances independently: aviation-fuel delivery does not consume the
+tractor's diesel or reset pump petrol; movement consumes the adopted tractor
+fuel model; pumping consumes its separate petrol-engine model. Replenishing one
+stock must not refill another implicitly. Missing capacity/rate/reserve inputs
+remain unknown rather than inventing a successful guard result.
+
+A new assignment during movement to depot parking, auxiliary-post diesel/petrol
+sequencing and petrol-only/mixed-shortage return branches still need explicit
+rules under Q-03/Q-04/Q-07 before their detailed expected traces are fixed.
 
 ## Fault tolerance and exceptional diesel assistance
 
@@ -199,7 +231,7 @@ excuse a route that violated the normal diesel-return guard.
 | Area | Intended evidence | Still to define |
 | --- | --- | --- |
 | Repeatability | Same scenario ID, seed, configuration and accepted-action sequence reproduce events, demands and expected behaviour | Event/time contract, replay format and solver determinism limits |
-| Conservation | Consistent aircraft/tanker aviation-fuel transfers; explicit depot reloads; separate diesel accounting | Units, density, tolerances, rates and operating-mode assumptions |
+| Conservation | Consistent aircraft/tanker aviation-fuel transfers; explicit depot reloads; independent tractor diesel and pump petrol; conserved diesel assistance | Units, density, tolerances, three-stock rates/reserves and operating-mode assumptions |
 | State integrity | No negative/over-capacity stock, service before readiness or after departure, or teleportation on replanning | Complete lifecycle/transition guards and failure outcomes |
 | Replanning trace | Original plan, trigger, revised priorities, proposal, feasibility, active mode and automatic/operator authorisation | Result IDs/revisions, mode rules and stale-result handling |
 | Measurable comparison | EDF versus cuOpt: coverage/lateness, distance/travel time, estimated diesel/cost, depot visits, delivered aviation fuel and calculation overhead | Common fixtures, EDF rules, fuel-cost assumptions, objective weights and numerical thresholds |
@@ -218,6 +250,9 @@ outcomes distinguishable in the replay and presentation.
   promising an arbitrary percentage improvement or a cuOpt win.
 - Define D-017 prevention, assistance and donor-unavailable fixtures as its
   lifecycle, transfer equipment and fuel assumptions are agreed.
+- Fix D-018–D-021 depot/three-stock fixture values and expected traces, including
+  independent pump-petrol failure, timed internal movement, partial-stock direct
+  departure and concurrent depot visits without occupancy queues.
 - For every selected scenario, specify initial state, profile IDs, timed events,
   operator actions, expected transitions, resource accounting and diagnostics.
 - Finalise timed arrivals for F04/F05, optional F06 and the transit scenario as

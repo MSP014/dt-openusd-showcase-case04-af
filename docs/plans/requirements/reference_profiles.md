@@ -1,7 +1,8 @@
 # Fuel Logistics — Reference Profiles
 
 **Status:** Working draft; selected visual configuration and candidate source
-claims retained; applicability and source verification pending
+claims retained; autonomous pump drive corroborated, exact early variant and
+numerical parameters still require verification
 
 **Last updated:** 29 October 2026
 
@@ -11,7 +12,8 @@ claims retained; applicability and source verification pending
 
 Source links and numerical claims below were transferred from the 28 October
 [architecture proposal](../incoming/fuel_logistics_architecture.md). They were
-not independently checked during restructuring. Treat them as an evidence
+not independently checked during restructuring. The 29 October pump-drive
+addition below records a limited source check; other rows remain an evidence
 queue, not newly verified equipment data or an adopted regulatory edition.
 
 ## Visual identity and operational profiles
@@ -47,8 +49,9 @@ visual historical-accuracy constraint, separate from optimisation logic.
 
 ## Equipment evidence register
 
-Each row records a **source-note claim awaiting applicability verification**.
-It is not a fresh assertion that a cited page has been independently validated.
+Rows record source-note claims awaiting applicability verification, except for
+the explicitly bounded pump-drive check. A corroborated arrangement does not
+verify the exact early sub-variant or its numerical operating parameters.
 
 | Item | Value/claim transferred from source notes | Candidate source | Applicability and next check |
 | --- | --- | --- | --- |
@@ -57,7 +60,8 @@ It is not a fresh assertion that a cited page has been independently validated.
 | Tractor identities | KrAZ-219 truck, KrAZ-221 tractor and later KrAZ-258 are distinct | [1967 vehicle handbook](https://ru.djvu.online/file/AijT2vN9N08xs) | Record relevant pages/variant details |
 | Production chronology | KrAZ-221 around 1960; TZ-22 series production from 1964 | [2005 automotive article](https://www.autotruck-press.ru/upload/iblock/775/%D0%96%D1%83%D1%80%D0%BD%D0%B0%D0%BB%20%D0%90%D0%92%D0%A2%D0%9E%D0%A2%D0%A0%D0%90%D0%9A%20%E2%84%961%202005.pdf); [TZ-22 description](https://aviaros.narod.ru/tz-22.htm) | Confirm source passages and compatibility with the intended on-screen year |
 | Road diesel norms | KrAZ-221 alone 46.5 L/100 km; with MAZ-5245 trailer 51.5 L/100 km; corresponding 221B values 45.5 and 50.5 L/100 km | [1983 vehicle fuel-norm table](https://meganorm.ru/mega_doc/dop_norm/56/metodicheskie_rekomendatsii_po_razrabotke/0/postanovlenie_gosplana_sssr_ot_17_06_1983_N_171_ob.html) | Different trailer/road conditions; possible reference proxy, not measured loaded TZ-22 airfield consumption |
-| Pump and service performance | No selected numeric rate/duration | Capacity sources above may include variant-specific pumping data | Verify pump arrangement, delivery rate, setup/completion time and power/fuel source |
+| Pump drive and third fuel stock | D-021 adopts a separate petrol engine and fuel tank; a GAZ-51A pump drive is documented for TZ-22 | [RU2268203C1, description of the earlier TZ-22](https://patents.google.com/patent/RU2268203C1/ru), citing *Spetsmashiny aeroportov*, 1980, pp. 33–59; [2003 compendium](https://ru.djvu.online/file/wPiqc8yoKOW0h) also describes autonomous drives | Separate drive corroborated on 29 October; exact engine/tank arrangement for the modelled early variant, capacity, consumption and reserve remain unverified |
+| Pump and service performance | No selected numeric rate/duration | Capacity sources above may include variant-specific pumping data | Verify delivery rate, pump-engine operating profile, setup/completion time and any engine use during depot loading |
 | Modern fuel-planning framework | Candidate fuel categories and reserves; no adopted edition | [EASA Easy Access Rules, CAT.OP.MPA.181](https://www.easa.europa.eu/en/document-library/easy-access-rules/online-publications/easy-access-rules-air-operations?erules-id=ERULES-1963177438-12803) | Check current/applicable edition, jurisdiction and selected simplifications before adopting; not historical Soviet rules |
 
 For illustration only, 22,000 L at an assumed 0.80 kg/L is 17,600 kg (17.6 tonnes).
@@ -98,8 +102,8 @@ JSON keys or implemented classes.
 | Profile | Information to establish |
 | --- | --- |
 | Aircraft operation | Fuel/performance category, tank/usable capacity, demand parameters, fuel type and applicable service constraints |
-| Tractor/semi-trailer/pump | Separate fuel stocks, capacities, consumption, delivery rates, service durations, dimensions and manoeuvring limits |
-| Airfield | Depot/stand/waiting nodes, reachable ground graph, path lengths/travel times, service points and clearances |
+| Tractor/semi-trailer/pump | Separate aviation-fuel, tractor-diesel and pump-petrol stocks/capacities; consumption, reserves, delivery rates, service durations, dimensions and manoeuvring limits |
+| Airfield | Two depot posts without occupancy queues, separate parking for two refuellers, stand/waiting nodes, reachable graph, internal/departure paths, travel times and clearances |
 | Planning rules | Reserve framework, time/priority policy, objective weights and documented assumptions |
 | Visual binding | Logical ID to USD asset/prim association and the required spatial/service interface metadata |
 
@@ -122,3 +126,6 @@ contract remains open; it is not guaranteed by having matching visual names.
   assets and the validation required after a swap.
 - Coordinate consumption, reserve, pumping and replenishment assumptions with
   the [fuel model](fuel_and_service_model.md) before approving numerical fixtures.
+- Verify the early pump-engine variant and petrol-tank capacity; select sourced
+  or explicitly synthetic consumption/rate/reserve values for D-021. The shared
+  diesel/petrol post is a scenario layout agreement, not a historical-source claim.

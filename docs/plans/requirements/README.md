@@ -41,6 +41,15 @@ second must supply enough diesel from its own tractor tank to restore that
 return, while retaining its own feasible return reserve (D-017). The assistance
 mechanism and exception handling still need detailed requirements.
 
+**Depot and third-stock clarification:** D-018–D-020 record transitions 5–7:
+arrival starts `Loading`; required post visits and internal travel take time;
+completion leads either to depot parking and `Idle` or directly to `ToAircraft`.
+The two posts have no occupancy queues, and separate depot parking holds both
+refuellers. D-021 adds pump petrol as the third independent refueller stock,
+alongside aviation fuel and tractor diesel. Every aircraft-service assignment
+must pass all three guards; full tanks are not required for a specific feasible
+assignment, while the reserve vehicle retains full Standby replenishment.
+
 Synthetic inputs are a deliberate trade-off while operational airport data is
 unavailable. They enable reproducible model/pipeline validation without claiming
 real-airport calibration; see the [classification note](../../knowledge_base/digital_twin_maturity_levels.md).
@@ -58,22 +67,22 @@ decision statuses recorded in the source notes; restructuring is not approval.
 | --- | --- | --- | --- |
 | This README | Navigation, decision provenance and review queue assembled | Keep this table, the checkpoint and decision register aligned after each reviewed change | All topic documents |
 | [Architecture](architecture.md) | Ownership principles agreed in discussion; automatic-dispatch capability clarified; event/time and authorisation contracts incomplete | Resolve Q-01/Q-02 and align mode-dependent execution authorisation with Q-13 | Domain entities; operating-mode contract |
-| [Domain and state machines](domain_and_state_machines.md) | Seven tanker states, transitions 1–3, transition 4 aviation-fuel branch, mandatory two-refueller rotation and D-017 assistance recorded; aircraft/request lifecycles incomplete | Resume diesel-shortage transitions and assistance lifecycle (Q-03), then remaining transitions; track Q-04, Q-05 and Q-13 | Resource feasibility; operator commands |
-| [Fuel and service model](fuel_and_service_model.md) | Separate fuel balances, depot diesel replenishment and protected return/assistance requirements recorded; units, rates and numerical parameters open | Detail diesel-return and donation calculations; then settle units, replenishment and fuel-check rules (Q-06, Q-07) | Reference profiles; domain lifecycle |
+| [Domain and state machines](domain_and_state_machines.md) | Seven states, transitions 1–3, transition 4 aviation-fuel branch, depot transitions 5–7, two-refueller rotation and assistance recorded; aircraft/request lifecycles incomplete | Review remaining fuel-shortage returns and recovery (Q-03), then waiting movements and reassignment, including depot parking (Q-04); track Q-05/Q-13 | Three-resource feasibility; depot operations; operator commands |
+| [Fuel and service model](fuel_and_service_model.md) | Three independent refueller stocks, timed depot operations, protected return and assistance requirements recorded; units/rates open | Define pump-petrol profile/reserve and depot service/visit policy; detail diesel return/donation and fuel checks (Q-06, Q-07) | Equipment profiles; domain lifecycle |
 | [Planning and operator workflow](planning_and_operator_workflow.md) | Shared queue and uninterrupted current service agreed; automatic dispatch required; operator modes open | Resolve operating modes (Q-13), “serve next” and cost/deadline policy (Q-08); verify the cuOpt interface (Q-09) | Domain states; physical constraints; EDF comparison |
 | [USD presentation contract](usd_presentation_contract.md) | One-way projection agreed in discussion; conflicts with existing schema v1.0 unresolved | Design ID bindings and field/status mappings, then review a versioned migration (Q-10) | Reviewed domain fields and ownership |
-| [Scenarios and validation](scenarios_and_validation.md) | Three on stands + two inbound + optional sixth, with two-refueller rotation and exceptional diesel assistance; EDF benchmark specified; no measured solver advantage | Fix common EDF/cuOpt inputs, rotation/recovery cases, fleet cost model, constraints and acceptance thresholds (Q-12) | Fuel profiles; lifecycle; objective and operating modes |
-| [Reference profiles](reference_profiles.md) | Equipment choices and source links retained; exact applicability not independently verified during restructuring | Verify variants and sources; select aircraft profiles, reserve framework and destinations (Q-11) | Intended scene configuration and fuel model |
+| [Scenarios and validation](scenarios_and_validation.md) | Demonstration, depot transitions 5–7, three-stock guards, rotation and diesel assistance cases recorded; EDF benchmark specified; no measured solver advantage | Fix common EDF/cuOpt inputs, pump/depot/rotation/recovery fixtures and thresholds (Q-12); retain separate diesel and petrol accounting | Fuel profiles; lifecycle; objective and operating modes |
+| [Reference profiles](reference_profiles.md) | Source claims retained; separate pump drive corroborated; exact early variant and numerical performance unverified | Verify pump-engine/tank variant and select capacities, consumption, rates and reserves; continue aircraft/destination review (Q-11) | Intended scene configuration and fuel model |
 
 ## Resume checkpoint
 
-The discussion has now agreed **D-015 / transition 4's aviation-fuel shortage
-branch**, **D-016 / mandatory two-refueller duty rotation** and **D-017 / protected
-diesel return and exceptional tractor-to-tractor assistance**, in addition to
-D-001–D-014.
-Transitions 1–3 retain their recorded agreement. Discuss and record **one
-transition/resource case at a time**; a table row for an open transition is not
-an agreed rule.
+The decision register now extends through D-021. New recorded agreements are
+**D-018 / depot arrival and operations**, **D-019 / completion without an assignment**, **D-020 / direct
+assigned departure** and **D-021 / three independent refueller fuel stocks**.
+Transitions 5–7 are now recorded rather than waiting for first discussion.
+The individual statuses of D-001–D-017 still apply; this does not approve remaining
+resource-shortage branches. Discuss **one transition/resource case at a time**;
+a table row for an open transition is not an agreed rule.
 
 **Additional review required:** Q-13 records the unresolved operating modes and
 the required automatic-dispatch capability. Resolve its authorisation and
@@ -82,26 +91,30 @@ operator-confirmation wording is reopened. This does not pre-approve any further
 tanker transition or choose the final mode set. D-016's duty rotation must follow
 the same operating-mode contract.
 
-**Next discussion: remaining diesel-shortage transitions and the detailed
-assistance contract (Q-03).** The agreed
+**Next discussion: remaining fuel-shortage return transitions and the detailed
+assistance contract (Q-03).** Add pump-petrol-only and mixed-shortage cases to
+the existing diesel review. The agreed
 aviation-fuel-only branch sends the relieved tanker straight to Fuel Depot if
 it can safely reach it with diesel reserve. The standby tanker can depart even
 before the current refuelling ends **only when** the next departing flight's
 fuel-check window has opened, an actual deficient-fuel request exists, and the
 active tanker cannot feasibly serve it. The ongoing refuelling is never
-interrupted. The depot is now assumed to replenish tractor diesel as well as
-aviation fuel during rotation. D-017 requires the second refueller to assist a
+interrupted. The depot now replenishes aviation fuel at one post and tractor
+diesel/pump petrol at the other, with no post queues and timed operations under
+D-018–D-021. D-017 requires the second refueller to assist a
 tractor that cannot return for lack of diesel; equipment, rates, timing,
 recovery lifecycle and donor-unavailable cases remain open. Do not infer
 permission for either vehicle to travel without sufficient diesel.
 See [the transition table](domain_and_state_machines.md#tanker-transitions) and
 [resource questions](fuel_and_service_model.md#open-questions-and-next-steps).
 
-Then continue, individually: arrival at the depot; loading completion and exit;
-arrival at waiting locations; Staging Point/Main Parking movements; a new
-assignment during `Repositioning`; entry/exit from `Maintenance`; remaining
-exceptions. Resolve shared resource questions when needed for each transition.
-Then complete request and aircraft lifecycles and the remaining contracts.
+Then continue, individually: remaining waiting-location arrivals and Staging
+Point/Main Parking movements; a new assignment during `Repositioning` or the
+`Loading` movement to depot parking; entry/exit from `Maintenance`; remaining
+exceptions. For recorded transitions 5–7, detail post order/skipping, auxiliary
+diesel/petrol service sequence, durations, rates and readiness targets without
+reopening their agreed state boundaries. Then complete request and aircraft
+lifecycles and the remaining contracts.
 
 ## Decision status and provenance
 
@@ -117,10 +130,10 @@ An eventual **Approved** status requires an explicit requirements review and
 resolution of relevant conflicts. Implementation and validation evidence should
 be recorded separately from requirements maturity.
 
-D-001–D-014 originate in the 28 October notes; D-015–D-017 record the later
-29 October discussions and clarification of the required two-vehicle fleet and
-diesel assistance. These are provenance IDs, not ADR numbers. Each has one
-primary home; other documents link to that definition.
+D-001–D-014 originate in the 28 October notes; D-015–D-021 record the later
+29 October discussions: the two-vehicle fleet, diesel assistance, depot
+transitions 5–7 and separate pump-petrol accounting. These are provenance IDs,
+not ADR numbers. Each has one primary home; other documents link to that definition.
 
 | ID | Recorded status | Decision and primary home |
 | --- | --- | --- |
@@ -128,7 +141,7 @@ primary home; other documents link to that definition.
 | D-002 | Agreed in discussion; existing-contract conflict open | [One-way USD presentation](usd_presentation_contract.md#ownership-and-direction) |
 | D-003 | Direction agreed | [Separate lifecycles](domain_and_state_machines.md#entities-and-lifecycles) |
 | D-004 | Agreed in discussion | [Unlimited aviation-fuel supply at depot](fuel_and_service_model.md#depot-and-resource-accounting) |
-| D-005 | Direction agreed; units proposed | [Three separate numerical fuel fields](fuel_and_service_model.md#quantities-and-units) |
+| D-005 | Numerical separation agreed in direction; units proposed; extended by D-021 | [Separate numerical fuel balances](fuel_and_service_model.md#quantities-and-units) |
 | D-006 | Provisional; blanket operator-confirmation assumption reopened by Q-13 | [Aircraft lifecycle and arrival type](domain_and_state_machines.md#aircraft-lifecycle); use the clarified 3 + 2 + optional 1 schedule |
 | D-007 | Proposed | [Pre-departure fuel check](domain_and_state_machines.md#fuel-check-and-request-lifecycle) |
 | D-008 | Direction agreed | [Yerevan, destinations and next flight leg](reference_profiles.md#destinations-and-flight-legs) |
@@ -141,6 +154,10 @@ primary home; other documents link to that definition.
 | D-015 | Agreed in discussion; remaining diesel-shortage transitions open | [Aviation-fuel-shortage return to Fuel Depot](domain_and_state_machines.md#tanker-transitions), transition 4 |
 | D-016 | Two refuellers required; rotation agreed; mechanism open | [Two-refueller duty rotation](domain_and_state_machines.md#two-refueller-rotation-d-016--agreed-in-discussion) |
 | D-017 | Protected diesel return and exceptional assistance required; detailed recovery contract open | [Diesel reserve and tractor-to-tractor assistance](domain_and_state_machines.md#diesel-reserve-and-exceptional-assistance-d-017) |
+| D-018 | Agreed in discussion; post rates/order open | [Transition 5: ToDepot to Loading](domain_and_state_machines.md#transition-5-todepot-to-loading); two posts and separate two-vehicle depot parking |
+| D-019 | Agreed in discussion; assignment during parking movement open | [Transition 6: Loading to Idle](domain_and_state_machines.md#transition-6-loading-to-idle); no assigned request, Idle on parking arrival |
+| D-020 | Agreed in discussion; numerical guards open | [Transition 7: Loading to ToAircraft](domain_and_state_machines.md#transition-7-loading-to-toaircraft); direct departure, partial stocks permitted if feasible |
+| D-021 | Three independent refueller stocks and guards agreed; exact equipment/parameters open | [Aviation fuel, tractor diesel and pump petrol](fuel_and_service_model.md#three-refueller-fuel-stocks-d-021) |
 
 ## Open review register
 
@@ -152,14 +169,14 @@ live in the owning document; this register provides a single continuation index.
 | --- | --- | --- |
 | Q-01 | Who applies events and commands to WorldState, and who publishes snapshots? Reconcile SDP publication wording with D-001 | [Architecture](architecture.md#open-questions-and-next-steps) |
 | Q-02 | What defines simulation time, event ordering, replay, resets and the relationship to USD time? | [Architecture](architecture.md#open-questions-and-next-steps) |
-| Q-03 | How do the remaining diesel-only/combined-shortage transitions and required D-017 assistance work, including an unavailable or infeasible donor? | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
-| Q-04 | Does Repositioning include departure from an aircraft stand? What are its arrival, timeout and reassignment rules? | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
+| Q-03 | How do diesel-only, pump-petrol-only and mixed-shortage returns and D-017 assistance work, including an unavailable or infeasible donor? | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
+| Q-04 | Does Repositioning include leaving an aircraft stand? What are waiting arrivals/timeouts and reassignment rules, including a new request during Loading movement to depot parking? | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
 | Q-05 | How do aircraft, request and tanker lifecycles stay consistent, especially request closure versus the final fuel check? What exactly does Ready mean? | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
 | Q-06 | Which units, fuel calculation, reserves and fuel-check timing rules are canonical? How are late arrivals and ETD changes handled? | [Fuel model](fuel_and_service_model.md#open-questions-and-next-steps) |
-| Q-07 | What depot/assistance equipment, rates, quantities, travel/pumping consumption, donor reserve and reachable-return calculations implement D-016/D-017? | [Fuel model](fuel_and_service_model.md#open-questions-and-next-steps) |
+| Q-07 | What pump-petrol capacity/consumption/reserve, depot visit/skip order, auxiliary diesel/petrol service sequence, rates/quantities and D-017 assistance calculations apply? | [Fuel model](fuel_and_service_model.md#open-questions-and-next-steps) |
 | Q-08 | What does “serve next” guarantee? How are priorities, queue position, deadline performance and tanker route/diesel cost balanced? | [Planning](planning_and_operator_workflow.md#open-questions-and-next-steps) |
 | Q-09 | Which cuOpt interface/features represent the chosen constraints, and how are infeasible, failed or outdated proposals handled? | [Planning](planning_and_operator_workflow.md#open-questions-and-next-steps) |
-| Q-10 | How are logical IDs and reviewed state fields projected into USD, and how is schema v1.0 reconciled/versioned? | [USD contract](usd_presentation_contract.md#open-questions-and-next-steps) |
+| Q-10 | How are logical IDs, separate aircraft/refueller fuel balances and state fields projected into USD, and how is schema v1.0 reconciled/versioned? | [USD contract](usd_presentation_contract.md#open-questions-and-next-steps) |
 | Q-11 | Which equipment variants, operating profiles, destinations, source editions and asset-swap metadata are verified and selected? | [Reference profiles](reference_profiles.md#open-questions-and-next-steps) |
 | Q-12 | Which common EDF/cuOpt fixtures, two-refueller rotation/recovery cases, fleet route/diesel-cost model and deadline/coverage criteria establish useful routing benefit on the 3 + 2 + optional 1 schedule? | [Scenarios](scenarios_and_validation.md#open-questions-and-next-steps) |
 | Q-13 | How can the system dispatch automatically, when is operator confirmation required, and how do intervention, overrides and mode switching work? | [Planning](planning_and_operator_workflow.md#operator-acceptance-and-unresolved-result-handling) |

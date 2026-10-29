@@ -44,13 +44,20 @@ contract/migration decision; do not silently maintain two state authorities.
 | `primvars:vehicle:id` | Logical identifier; examples include tanker and flight IDs | Define uniqueness, flight versus aircraft identity and mapping to prim paths |
 | `primvars:logistics:status` | Shared strings `Idle`, `Transit`, `Refueling`, `Maintenance` | Map or replace with separately defined aircraft/request/tanker representations |
 | `primvars:logistics:fuelNeeded` | Aircraft fuel needed for departure; litre-valued example | Clarify total required departure stock versus remaining uplift; do not silently repurpose |
-| `primvars:logistics:fuelCurrent` | Current payload for both aircraft and tanker | Distinguish onboard aviation fuel, tanker aviation fuel and tractor diesel |
+| `primvars:logistics:fuelCurrent` | Current payload for both aircraft and tanker | Distinguish aircraft aviation fuel from the refueller's aviation fuel, tractor diesel and pump petrol; one shared value cannot represent all balances |
 | `primvars:logistics:priority` | Integer `1` highest to `5` lowest | Define mapping from internal score/policy; retain the existing direction unless explicitly revised |
 
 The source notes recognise that the current coarse fields cannot fully express
 all lifecycle/resource distinctions. They do not agree new field names, types,
 enum mappings, units or a new schema version. Finalise domain and fuel semantics
 before approving the projection.
+
+D-021 requires the separate pump-petrol quantity to remain visible and traceable
+alongside the other stocks. `Loading` now covers timed depot operations and
+internal movement under D-018–D-020; it does not mean the vehicle is instantly
+full or stationary. Decide which current post/operation/location data should be
+shown without treating those details as new tanker enum states. No new primvar
+name or schema version is approved by these requirements updates.
 
 ## Identity, display and authoring responsibilities
 

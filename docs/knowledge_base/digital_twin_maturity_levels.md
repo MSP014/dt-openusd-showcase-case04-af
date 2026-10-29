@@ -53,8 +53,8 @@ remains under review.
 The intended demonstration requires two identical refuellers for active/standby
 duty rotation and fault tolerance, three aircraft initially on stands, two
 inbound flights and an optional sixth unscheduled arrival. The planned system will calculate service order and
-ground routes using readiness, deadlines, travel/service time, aviation fuel and
-tractor-diesel constraints.
+ground routes using readiness, deadlines, travel/service time, aviation fuel,
+tractor diesel and independent pump-petrol constraints.
 Automatic dispatch is a required capability; the detailed operator modes remain
 open.
 

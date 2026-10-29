@@ -17,9 +17,11 @@ This project is developing a **Synthetic-data-driven L2-style Decision-Support P
 **Current implementation — Under Development:** `src/` contains a placeholder, and `tests/test_dummy.py` is an infrastructure smoke test, not logistics validation. The repository currently provides working requirements, environment/dependency setup and development/reference utilities. It does not yet provide a working routing solver, synthetic-data generator or interactive logistics runtime.
 
 **Key Use Case:**
-**Planned:** Two identical KrAZ-221 + TZ-22 refuellers alternate active/standby duty to serve a schedule with **three aircraft on stands, two inbound flights and a possible sixth unscheduled arrival**. The system is intended to plan feasible service sequences and ground routes using departure/service deadlines, arrival readiness, travel distances, service times, aviation-fuel capacity and tractor-diesel constraints. Planned HUD overlays will expose assignments, fuel and reasons for replanning.
+**Planned:** Two identical KrAZ-221 + TZ-22 refuellers alternate active/standby duty to serve a schedule with **three aircraft on stands, two inbound flights and a possible sixth unscheduled arrival**. The system is intended to plan feasible service sequences and ground routes using departure/service deadlines, arrival readiness, travel distances, service times and three independent refueller stocks: aviation fuel, tractor diesel and petrol for the separate pump engine. Planned HUD overlays will expose assignments, fuel and reasons for replanning.
 
 Two refuellers are required, including for fault tolerance. Normal fuel checks must preserve enough tractor diesel to return to the depot with reserve. If a vehicle nevertheless cannot reach it, the second must transfer enough diesel from its own tractor tank to restore that return while retaining its own return reserve. This recovery capability is planned; its equipment, timing and detailed lifecycle remain under requirements review.
+
+Planned depot operations use two posts: aviation-fuel loading and separate diesel/pump-petrol replenishment at an auxiliary post, with no post-occupancy queues. Required visits and internal movement take time; separate depot parking holds both refuellers. Assigned departure requires sufficient stocks for the job and reserves, rather than full tanks. See the [depot transition requirements](docs/plans/requirements/domain_and_state_machines.md#depot-loading-and-departure).
 
 Automatic dispatch is a required capability of the planned system. The boundaries between automatic operation, operator-confirmed recommendations and manual intervention remain under requirements review; manual approval of every dispatch is not a settled rule. Replanning latency and solution quality still need measurement, and global optimality is not claimed.
 
@@ -33,7 +35,7 @@ Automatic dispatch is a required capability of the planned system. The boundarie
 
 Earliest Deadline First (EDF) is the planned simple baseline. It may already meet departure deadlines in straightforward cases. The additional routing objective is to **reduce total refueller travel and estimated diesel cost while satisfying the same service and resource constraints**. Sorting by deadline alone does not optimise the ground route or replenishment sequence.
 
-The planned comparison uses the same revealed schedule/events, two-refueller fleet and rotation rules, road graph, fuel/service model and feasibility checks for EDF and cuOpt. It will report deadline performance, served demand, total distance and diesel consumption/cost across both refuellers, depot visits and calculation overhead. With at most six flights, GPU necessity and a cuOpt advantage are unproven; equal or worse results must be reported. See the [benchmark requirements](docs/plans/requirements/scenarios_and_validation.md#earliest-deadline-first-comparison).
+The planned comparison uses the same revealed schedule/events, two-refueller fleet and rotation rules, road graph, three-stock fuel/service model and feasibility checks for EDF and cuOpt. It will report deadline performance, served demand, total distance and diesel consumption/cost across both refuellers, pump petrol separately, depot visits and calculation overhead. With at most six flights, GPU necessity and a cuOpt advantage are unproven; equal or worse results must be reported. See the [benchmark requirements](docs/plans/requirements/scenarios_and_validation.md#earliest-deadline-first-comparison).
 
 ### Synthetic data and maturity
 
@@ -132,6 +134,7 @@ To keep this repository lightweight, heavy binary assets (USD Crates, Textures, 
 
 ## 📜 Changelog
 
+- **Week of Oct 26, 2026:** Adopted Python 3.11.15 with a reproducible Conda environment, refreshed hash-locked dependencies, enabled standalone OpenUSD inspection and aligned validation tooling.
 - **Week of May 25, 2026:** Resolved the dependency-tooling security lock by updating pip-tools and refreshing the pinned dependencies and validation commands.
 - **Week of Mar 2, 2026:** Designed and implemented a comprehensive 5-part USD Architecture Knowledge Base tailored for logistics and VRP simulation (`docs/knowledge_base/usd_architecture/`), while standardizing repository folder casing (`snake_case`) and resolving pre-commit hook bugs.
 - **Week of Jan 26, 2026:** Automated Jira plan synchronization to generate live `case 04 - implementation.md` Markdown plans, refactored sync scripts for strict linting compliance, and established external storage protocols for heavy assets.

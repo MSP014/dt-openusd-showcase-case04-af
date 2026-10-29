@@ -44,6 +44,10 @@ Normal assignments must preserve each tractor's protected return. The required
 [D-017 diesel-assistance fallback](domain_and_state_machines.md#diesel-reserve-and-exceptional-assistance-d-017)
 needs its own feasible donor assignment and the same operating-mode contract;
 assistance scheduling and its interaction with aircraft requests remain open.
+All service assignments also require the independent [D-021 pump-petrol guard](fuel_and_service_model.md#three-refueller-fuel-stocks-d-021).
+Keep pump petrol separate from tractor diesel in feasibility and reporting.
+The route/diesel objective remains the planned comparison; combining petrol
+cost with it requires a declared cost policy rather than a silent substitution.
 
 Earliest Deadline First (EDF) is the required simple comparison policy. It can
 meet deadlines in suitable scenarios; that outcome does not demonstrate that it
@@ -82,8 +86,9 @@ well as improvements. The integration remains planned.
   action, **Serve next**, raises priority and triggers replanning.
 - If the tanker is already `Refueling`, the next-service preference applies
   after that service completes. Current refuelling is not interrupted.
-- Any next assignment must remain feasible for aviation fuel, diesel, distance,
-  availability and time. An override does not remove physical constraints.
+- Any next assignment must remain feasible for aviation fuel, tractor diesel,
+  pump petrol, distance, readiness, availability and time. An override does not
+  remove any of the three resource guards.
 - If the request cannot be served without replenishment, display that limitation
   rather than sending the tanker with insufficient resources.
 
@@ -108,6 +113,15 @@ service durations, time windows, depot nodes/visits and a documented objective
 or lateness-penalty formulation. Expected output includes recommended visits,
 route/path identifiers, timings, depot returns, estimated impacts, unmet demand
 and feasibility diagnostics.
+
+Represent all three refueller stocks and their different consumption mechanisms.
+Depot visits use timed sequential operations and internal travel, with no
+post-occupancy queues under D-018. A feasible assigned departure can use partial
+stocks. Without an assigned request, follow D-019's parking/Idle branch; with an
+assigned request, evaluate D-020's departure guards. Verify how the selected
+solver interface represents these requirements and enforce unsupported guards
+in application validation;
+do not assume native cuOpt support for the third resource or depot phases.
 
 The exact handling of priorities, repeated depot visits, multiple resources,
 partial service/split deliveries and locked commitments depends on the selected

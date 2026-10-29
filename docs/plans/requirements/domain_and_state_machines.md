@@ -1,11 +1,12 @@
 # Fuel Logistics — Domain and State Machines
 
-**Status:** Working draft; tanker transitions 1–3 agreed in discussion, remaining
-transitions open; aircraft lifecycle provisional; request lifecycle undefined
+**Status:** Working draft; tanker transitions 1–3 and the aviation-fuel shortage
+branch of transition 4 agreed in discussion; two-refueller rotation agreed;
+remaining transitions open; aircraft lifecycle provisional; request lifecycle undefined
 
 **Last updated:** 29 October 2026
 
-**Primary decisions:** D-003, D-006, D-007, D-010, D-012, D-013, D-014
+**Primary decisions:** D-003, D-006, D-007, D-010, D-012, D-013, D-014, D-015, D-016
 
 **Review questions:** Q-03, Q-04, Q-05; fuel dependencies Q-06, Q-07
 
@@ -130,6 +131,34 @@ permitted waiting locations, while D-014 also uses it to leave an aircraft stand
 Agree the complete definition before finalising the enum. Geometry, location
 selection, arrival, timeout and reassignment while travelling are still open.
 
+## Two-refueller rotation (D-016 — agreed in discussion)
+
+- The planned full scenario has **two identical KrAZ-221 + TZ-22 refuellers**.
+  Normally one is the **Active** duty vehicle on the airfield; the other is
+  fully replenished and waiting at the Fuel Depot as **Standby**. These are
+  *duty roles*, not additional tanker enum states.
+- After cuOpt/planning identifies the next fuel-service request, check whether
+  the active vehicle can deliver its required aviation fuel and retain enough
+  diesel to perform the service and reach the depot with a protected reserve.
+  When it cannot, the standby vehicle takes the next feasible assignment.
+- The standby vehicle may depart **before the active vehicle completes its
+  current refuelling** if the next departing flight's pre-departure fuel-check
+  window has already opened, the check found a deficit and created a request,
+  and the active vehicle cannot feasibly serve it. Opening a check window
+  alone is **not** a dispatch trigger.
+- The current aircraft's refuelling remains uninterrupted. After completing
+  it and disconnecting equipment, the relieved vehicle returns to the depot
+  if safely reachable. There it replenishes both aviation fuel in the trailer
+  and diesel in the tractor, then waits fully replenished as the new Standby.
+  The two vehicles alternate these roles as needed.
+- Prevent running out of tractor diesel through dispatch guards. Emergency
+  diesel transfer from the second tractor was discussed only as an **optional
+  contingency concept**, not an approved procedure or initial-scope feature;
+  transfer equipment, safe access and recovery rules remain unspecified.
+- Whether automatic rotation follows an accepted standing dispatch policy or
+  requires acceptance of a particular revised plan remains open in the
+  [operator workflow](planning_and_operator_workflow.md).
+
 ## Tanker transitions
 
 | Transition | Trigger and conditions | Recorded action/result | Status and limits |
@@ -138,7 +167,8 @@ selection, arrival, timeout and reassignment while travelling are still open.
 | 2: `ToAircraft -> Refueling` (D-012) | Arrived at assigned aircraft; aircraft is on stand and ready to receive fuel | Both aircraft and tanker enter `Refueling`; fuel transfers gradually through WorldState | Agreed in discussion; hose connection/equipment preparation are included in overall service time, without a separate setup state |
 | 3A: `Refueling -> ToAircraft` (D-014) | Current service finished and equipment disconnected; next request exists; aviation fuel covers that entire request; diesel covers travel, service and return to Fuel Depot with minimum reserve | Travel directly to the next aircraft without visiting a Staging Point | Agreed in discussion; final request-closure semantics need Q-05 review; order follows shared queue/override |
 | 3B: `Refueling -> Repositioning` (D-014) | Current service finished and equipment disconnected; no next request | Release aircraft stand and move to a permitted Staging Point | Agreed in discussion; reconcile Repositioning definition and resource feasibility of the waiting movement |
-| 4: next request exists, resources insufficient | Aviation fuel or diesel guard for 3A fails | Direct travel to next aircraft is forbidden; subsequent action undecided | **Open; next discussion.** Do not assume a depot trip solves every shortage |
+| 4: `Refueling -> ToDepot` (D-015), aviation-fuel shortage | Current service complete; next fuel request exists; tanker lacks aviation fuel for it, but has sufficient diesel to safely reach Fuel Depot with reserve | Return directly to Fuel Depot without Staging Point; a full standby tanker can take the next feasible service as part of D-016 rotation | **Agreed in discussion for aviation-fuel shortage only.** Diesel-only, combined shortage and recovery conditions remain open |
+| Standby relief: `Idle -> ToAircraft` (D-016; reuses transition 1) | Active tanker cannot feasibly serve the next request; next flight's fuel-check window has opened; an actual fuel-deficit request exists; standby vehicle has adequate aviation fuel/diesel and is free | Dispatch the standby from Fuel Depot to the aircraft, even before the current active tanker finishes refuelling | **Agreed in discussion.** Current service remains uninterrupted; acceptance/plan policy remains open |
 | Depot arrival and loading | Candidate `ToDepot -> Loading` | Guards and loading start conditions to be defined | Open; named in source, not detailed/approved |
 | Loading completion and depot departure | To be defined | To be defined | Open |
 | Arrival at Staging Point/Main Parking | To be defined | Available stationary state described as `Idle`; transition details to be defined | Open |
@@ -147,15 +177,16 @@ selection, arrival, timeout and reassignment while travelling are still open.
 
 The D-014 diesel guard includes enough fuel for reaching the next aircraft,
 servicing it and then returning to Fuel Depot with a minimum reserve. Numerical
-consumption, reserve and pumping-energy assumptions are still open. The source
-does not define diesel replenishment at Fuel Depot. Current refuelling is not
-interrupted merely because another request gains priority.
+consumption, reserve and pumping-energy assumptions are still open. The new D-016 rotation agreement assumes tractor diesel can be replenished
+at the Fuel Depot; the physical facility, timing and consumption model remain
+open (Q-07). Current refuelling is not interrupted merely because another
+request gains priority.
 
 ## Open questions and next steps
 
-- **Q-03:** Review transition 4 next. Separate aviation-fuel shortage, diesel
-  shortage and combined shortage; establish reachability and what remains
-  undecided. Do not approve later transitions by implication.
+- **Q-03:** Transition 4's aviation-fuel-only return is agreed (D-015).
+  Review the diesel-only, combined-shortage and stranded-vehicle cases next;
+  establish reachability without approving any recovery behaviour by implication.
 - **Q-04:** Reconcile Repositioning wording; then review waiting-location
   arrivals, long-wait movement and assignment during travel individually.
 - **Q-05:** Complete aircraft/request lifecycles, ID relationships, cancellation
@@ -164,6 +195,6 @@ interrupted merely because another request gains priority.
 - **Q-06/Q-07 dependencies:** Define the resource guards required by each
   reviewed transition without guessing units, reserve values or a diesel supply.
 
-After transition 4, follow the sequence in the [resume checkpoint](README.md#resume-checkpoint).
+After the remaining transition-4 resource cases, follow the sequence in the [resume checkpoint](README.md#resume-checkpoint).
 Only extend a state table or its diagram after the corresponding behaviour is
 agreed. Keep agreed transitions distinct from provisional models and open rows.

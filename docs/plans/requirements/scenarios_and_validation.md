@@ -18,7 +18,9 @@ successive scopes, not competing fleet requirements.
 ## Minimum reproducible baseline
 
 Start with one KrAZ-221 + early TZ-22 refueller, three aircraft requiring fuel
-and one aviation-fuel depot. Use fixed inputs with contrasting priorities,
+and one aviation-fuel depot as a **minimal test fixture**, not the final
+fleet size. The agreed extended scenario uses two identical refuellers with
+alternating active/standby duty (D-016). Use fixed inputs with contrasting priorities,
 demands and service deadlines. The exact fixture remains to be selected.
 
 Compare a fixed reference service sequence with a proposed sequence. Record

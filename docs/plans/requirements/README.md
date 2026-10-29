@@ -37,7 +37,7 @@ decision statuses recorded in the source notes; restructuring is not approval.
 | --- | --- | --- | --- |
 | This README | Navigation, decision provenance and review queue assembled | Keep this table, the checkpoint and decision register aligned after each reviewed change | All topic documents |
 | [Architecture](architecture.md) | Ownership principles agreed in discussion; application boundaries and time contract incomplete | Resolve Q-01 and Q-02: event application, snapshot publication, simulation clock and replay | Domain entities; operator acceptance |
-| [Domain and state machines](domain_and_state_machines.md) | Seven tanker states and transitions 1–3 recorded; aircraft model provisional; request lifecycle undefined | Resume transition 4 (Q-03), then review remaining transitions one at a time; track Q-04 and Q-05 | Resource feasibility; operator commands |
+| [Domain and state machines](domain_and_state_machines.md) | Seven tanker states, transitions 1–3, transition 4 aviation-fuel branch and two-refueller rotation recorded; aircraft model provisional; request lifecycle undefined | Resume transition 4 diesel-shortage cases (Q-03), then review remaining transitions one at a time; track Q-04 and Q-05 | Resource feasibility; operator commands |
 | [Fuel and service model](fuel_and_service_model.md) | Separate fuel balances agreed conceptually; units, calculation profiles and numerical parameters open | Define the resource cases needed for transition 4; then settle units, replenishment and fuel-check rules (Q-06, Q-07) | Reference profiles; domain lifecycle |
 | [Planning and operator workflow](planning_and_operator_workflow.md) | Shared queue and uninterrupted current service agreed in discussion; solver and acceptance details proposed | Clarify “serve next”, approval boundaries and priority policy; verify the selected cuOpt interface (Q-08, Q-09) | Domain states; physical constraints |
 | [USD presentation contract](usd_presentation_contract.md) | One-way projection agreed in discussion; conflicts with existing schema v1.0 unresolved | Design ID bindings and field/status mappings, then review a versioned migration (Q-10) | Reviewed domain fields and ownership |
@@ -46,22 +46,23 @@ decision statuses recorded in the source notes; restructuring is not approval.
 
 ## Resume checkpoint
 
-The source discussion stopped after **D-014 / tanker transition 3**. Transitions
-1–3 retain their recorded agreement, with review findings still open. Discuss
-and record **one transition at a time**; a table row for an open transition is
-not an agreed rule.
+The discussion has now agreed **D-015 / transition 4's aviation-fuel shortage
+branch** and **D-016 / two-refueller duty rotation**, in addition to D-001–D-014.
+Transitions 1–3 retain their recorded agreement. Discuss and record **one
+transition/resource case at a time**; a table row for an open transition is not
+an agreed rule.
 
-**Next discussion: transition 4.** After current refuelling ends, a next request
-exists but aviation fuel and/or tractor diesel is insufficient for the next
-service and protected return. Define the separate shortage cases and conditions
-for `ToDepot`; neither that transition nor diesel replenishment is approved yet.
-See [the transition table](domain_and_state_machines.md#tanker-transitions) and
-[resource questions](fuel_and_service_model.md#open-questions-and-next-steps).
+**Next discussion: transition 4, diesel-shortage cases (Q-03).** The agreed
+aviation-fuel-only branch sends the relieved tanker straight to Fuel Depot if
+it can safely reach it with diesel reserve. The standby tanker can depart even
+before the current refuelling ends **only when** the next departing flight's
+fuel-check window has opened, an actual deficient-fuel request exists, and the
+active tanker cannot feasibly serve it. The ongoing refuelling is never
+interrupted. The depot is now assumed to replenish tractor diesel as well as
+aviation fuel during rotation, while physical facilities, rates and diesel
+failure/recovery rules remain open. Do not infer permission for a vehicle to
+travel without sufficient diesel.
 
-The existing definition of Fuel Depot covers aviation fuel. Establishing where
-diesel can be replenished and whether the vehicle can reach that location is a
-dependency of this discussion, not a reason to assume that every shortage can be
-resolved by driving to Fuel Depot.
 
 Then continue, individually: arrival at the depot; loading completion and exit;
 arrival at waiting locations; Staging Point/Main Parking movements; a new
@@ -83,8 +84,8 @@ An eventual **Approved** status requires an explicit requirements review and
 resolution of relevant conflicts. Implementation and validation evidence should
 be recorded separately from requirements maturity.
 
-All D-IDs below originate in the 28 October notes. They are provenance IDs, not
-ADR numbers. Each has one primary home; other documents link to that definition.
+D-001–D-014 originate in the 28 October notes; D-015–D-016 record the later
+29 October follow-up discussion. These are provenance IDs, not ADR numbers. Each has one primary home; other documents link to that definition.
 
 | ID | Recorded status | Decision and primary home |
 | --- | --- | --- |
@@ -102,6 +103,8 @@ ADR numbers. Each has one primary home; other documents link to that definition.
 | D-012 | Agreed in discussion | [Arrival and start of refuelling](domain_and_state_machines.md#tanker-transitions), transition 2 |
 | D-013 | Agreed in discussion; locations/threshold open | [Depot, waiting locations and Repositioning](domain_and_state_machines.md#locations-and-repositioning) |
 | D-014 | Agreed in discussion; shortage branch open | [Post-service branching](domain_and_state_machines.md#tanker-transitions), transition 3 |
+| D-015 | Agreed in discussion; diesel shortage open | [Aviation-fuel-shortage return to Fuel Depot](domain_and_state_machines.md#tanker-transitions), transition 4 |
+| D-016 | Agreed in discussion; mechanism and exception handling open | [Two-refueller duty rotation](domain_and_state_machines.md#two-refueller-rotation-d-016--agreed-in-discussion) |
 
 ## Open review register
 
@@ -113,11 +116,11 @@ live in the owning document; this register provides a single continuation index.
 | --- | --- | --- |
 | Q-01 | Who applies events and commands to WorldState, and who publishes snapshots? Reconcile SDP publication wording with D-001 | [Architecture](architecture.md#open-questions-and-next-steps) |
 | Q-02 | What defines simulation time, event ordering, replay, resets and the relationship to USD time? | [Architecture](architecture.md#open-questions-and-next-steps) |
-| Q-03 | Transition 4: what follows refuelling when the next request fails an aviation-fuel or diesel feasibility check? | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
+| Q-03 | Transition 4: aviation-fuel-only depot return agreed; what if diesel is insufficient or both fuel guards fail? | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
 | Q-04 | Does Repositioning include departure from an aircraft stand? What are its arrival, timeout and reassignment rules? | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
 | Q-05 | How do aircraft, request and tanker lifecycles stay consistent, especially request closure versus the final fuel check? What exactly does Ready mean? | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
 | Q-06 | Which units, fuel calculation, reserves and fuel-check timing rules are canonical? How are late arrivals and ETD changes handled? | [Fuel model](fuel_and_service_model.md#open-questions-and-next-steps) |
-| Q-07 | Where/how is diesel replenished? What are travel, pumping, reserve and reachable-return assumptions? | [Fuel model](fuel_and_service_model.md#open-questions-and-next-steps) |
+| Q-07 | Diesel replenishment at the depot now assumed for rotation; what facility, rates, travel, pumping, reserve and reachable-return rules apply? | [Fuel model](fuel_and_service_model.md#open-questions-and-next-steps) |
 | Q-08 | What does “serve next” guarantee? How are priorities, queue position and operator acceptance defined? | [Planning](planning_and_operator_workflow.md#open-questions-and-next-steps) |
 | Q-09 | Which cuOpt interface/features represent the chosen constraints, and how are infeasible, failed or outdated proposals handled? | [Planning](planning_and_operator_workflow.md#open-questions-and-next-steps) |
 | Q-10 | How are logical IDs and reviewed state fields projected into USD, and how is schema v1.0 reconciled/versioned? | [USD contract](usd_presentation_contract.md#open-questions-and-next-steps) |

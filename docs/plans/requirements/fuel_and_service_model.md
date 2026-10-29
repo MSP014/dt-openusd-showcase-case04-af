@@ -104,9 +104,11 @@ Proposed conservation requirements from the architecture note:
 - Negative stock, over-capacity stock, service before readiness, service after
   departure and movement without elapsed travel are invalid outcomes.
 
-The source does **not** establish a diesel supply at Fuel Depot or elsewhere.
-That capability and its replenishment rules remain open. Unlimited aviation
-fuel cannot be extended to diesel by implication.
+The **D-016 duty-rotation agreement** now assumes tractor diesel is replenished
+at the Fuel Depot together with the trailer's aviation fuel; the actual diesel
+facility, refilling time, supply quantities and reachable-return rules remain
+to be specified. Unlimited aviation-fuel supply (D-004) is **not** automatically
+an agreed unlimited-diesel-stock model.
 
 ## Ground travel and service feasibility
 
@@ -143,7 +145,7 @@ the detailed time model remains to be selected.
 - **Q-06:** Choose canonical units, density, capacities, tolerances and the
   usable-fuel definition. Select the departure-fuel calculation and reserve
   framework, and reconcile fuel-check timing with ETD changes and late arrivals.
-- **Q-07:** Define diesel replenishment location/capability, minimum reserve,
+- **Q-07:** Detail the agreed depot diesel replenishment capability, minimum reserve,
   reachable-return calculation, travel/idle/pumping consumption assumptions,
   loading rates and setup/completion durations.
 - **Q-11 dependency:** Verify equipment variant and profile applicability before

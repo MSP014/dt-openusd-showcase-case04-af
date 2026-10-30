@@ -3,7 +3,7 @@
 **Status:** Working draft; ownership principles agreed in discussion, component
 and event contracts incomplete
 
-**Last updated:** 30 October 2026
+**Last updated:** 31 October 2026
 
 **Primary decision:** D-001
 
@@ -72,22 +72,39 @@ a faulty vehicle working merely to finish a delivery or wait for replacement.
 
 ## Data and command flow
 
-D-036 requires aircraft Alert after service interruption caused by a tanker
-fault, followed by Alert-to-Refueling when replacement service actually begins.
-D-037 constrains synthetic schedules: changed/new flights use their check window
-and actual retained fuel, but once an aircraft enters Ready its flight is no
-longer cancelled/revised and readiness is not revoked; it departs at departure
-time. This is a declared demonstration simplification, not a live-airport
-guarantee. The complete aircraft transition review is the next-session priority.
+D-006/D-007 define eight aircraft states and actual-event transitions, including
+Departing between Ready and Departed. D-036 requires aircraft Alert after a
+tanker fault and actual replacement-service start before resumption. D-039
+cancels the undelivered commitment if the flight is cancelled in Alert before
+replacement arrival; delivered fuel stays onboard. WorldState applies those
+effects together with request/assignment changes, not through USD animation.
+
+D-037 requires the current flight's check window and retained stock before
+Ready, including after a delivery for an earlier flight. Ready is irreversible
+for every event/command source: the provider must not generate reversals and
+execution must reject operator cancellation, replacement and readiness loss.
+Actual movement starts Departing; airborne zone exit ends participation.
+This is a declared demonstration simplification, not a live-airport guarantee.
+
+D-040 keeps agreed ETD, predicted departure and actual movement/take-off
+distinct. Operator confirmation is required to change an existing scheduled
+ETD; automatic tanker dispatch remains required under Q-13. Keeping a schedule
+does not make an infeasible deadline feasible. A late-ready aircraft continues
+its actual departure sequence with lateness retained, without waiting for a
+past event or silently changing ETD. Exact time records/event ordering remain open.
 
 D-033/D-034 require separate flight, aircraft, request and started-service
 commitment identities. The provider can supply explicit flight cancellation and
 later assign a new flight to the same parked aircraft. Execution preserves the
-original started-service conditions despite withdrawal/cancellation, rejects
-late manual cancellation, and applies actual transfers until completion or an
-adopted disabling fault. Cancellation must not delete the physical aircraft,
+original running-service conditions despite withdrawal/cancellation, rejects
+late manual interruption, and applies actual transfers until completion or a
+technical fault. D-039 is the explicit exception for the undelivered obligation
+after interruption and before replacement arrival. Cancellation must not delete the physical aircraft,
 reset its fuel or turn a completed delivery into an unserved request. Concrete
-identity/version/event-ordering formats remain open.
+identity/version/event-ordering formats remain open. Repeated cancellation and
+stale replacement-start commands must not revive cancelled work or repeat a
+fuel transfer. A changed flight's future check window cannot be opened early
+merely because an earlier committed delivery has finished.
 
 The following view organises the recorded direction; event-application details
 are still open:
@@ -135,6 +152,9 @@ future schedule knowledge remains distinct from an executable service request.
 These are required event semantics,
 not an implementation or a selected event-processing API; same-time ordering
 remains open under Q-02.
+For an existing flight's ETD, D-040 distinguishes an unaccepted proposal from an
+applied operator-confirmed change. Only the latter changes the authoritative
+schedule/window used for executable waiting, assignment and movement decisions.
 
 D-027 requires the planning layer to compare joint aircraft assignments, service
 order and replenishment timing for the two-vehicle fleet. Both refuellers may

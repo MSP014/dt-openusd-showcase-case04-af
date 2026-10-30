@@ -3,7 +3,7 @@
 **Status:** Working draft; three refueller stocks and depot operations agreed in
 discussion; units, consumption profiles, rates and numerical parameters open
 
-**Last updated:** 30 October 2026
+**Last updated:** 31 October 2026
 
 **Primary decisions:** D-004, D-005, D-021; depot transitions D-018–D-020
 
@@ -112,9 +112,11 @@ Missing route, performance, reserve or readiness data remains unknown. The
 system must not silently fabricate a feasible demand. Reject/report an aircraft
 capacity violation rather than silently capping its calculated requirement.
 
-The proposed [D-007 fuel check](domain_and_state_machines.md#fuel-check-and-request-lifecycle)
-uses this demand model. Its trigger timing, ETD changes, late arrivals and
-post-service result handling remain open; this document does not approve them.
+The [D-007 fuel check](domain_and_state_machines.md#fuel-check-and-request-lifecycle)
+uses this demand model. Its reviewed triggers include the current-flight window,
+an immediate due check after late stand arrival and post-service readiness
+guards. Numerical lead time and rescheduling after an accepted ETD change
+remain open; an earlier flight's completed delivery does not open a new window.
 
 ## Depot and resource accounting
 
@@ -247,19 +249,32 @@ time model remains to be selected.
 
 ## Open questions and next steps
 
-D-036 preserves actual aircraft fuel and outstanding need during an interrupted
-delivery in aircraft Alert; a replacement resumes service from those quantities.
+D-036 preserves actual aircraft fuel and outstanding committed delivery during
+an interruption in aircraft Alert. A replacement supplies only that undelivered
+quantity, unless D-039 cancels it before replacement arrival. Cancellation
+retains issued fuel in aircraft stock and transfer history; it removes only the
+old outstanding obligation, not the physical delivery already made.
 D-037 uses retained onboard fuel at the changed/new flight's check window to
 determine Ready or additional demand while Parked. No synthetic event may revoke
-Ready after it has been granted; the demonstration assumes departure readiness
-then remains valid. Check-window/service overlap and late readiness are queued
-for the next aircraft review, not silently assigned timing rules here.
+Ready after it has been granted, and execution rejects equivalent operator
+commands. Delivery completion before a changed/new flight's check window leaves
+the aircraft Parked, even if its stock is sufficient. A late stand arrival gets
+its due check immediately; a window opening during running service does not
+interrupt it or duplicate its demand. D-040 retains scheduled ETD separately
+from prediction/actual departure when readiness is late. Numerical lead times
+and ETD-change rescheduling details remain open.
 
 D-034 retains the agreed delivery quantity/conditions when aircraft service
 starts. Later cancellation/revision does not reduce or rewrite that active
 commitment. Account for actual transferred fuel even when the flight is cancelled;
-finish the committed service in normal operation; D-035 detected-fault withdrawal
-stops aircraft service regardless of whether some equipment remains functional.
+finish running committed service in normal operation; D-035 detected-fault
+withdrawal stops it regardless of whether some equipment remains functional.
+D-039 permits cancellation of the old undelivered obligation while Alert before
+replacement arrival. For an 8-tonne operation interrupted after 3 tonnes, record
+3 tonnes actually issued and cancel the remaining 5 tonnes if that flight is
+cancelled in the reviewed window. A new flight requiring 6 tonnes onboard then
+needs 3 tonnes of uplift if there has been no intervening consumption. Never
+count the cancelled 5 tonnes as delivered or revive it as the new flight's demand.
 The fuelled aircraft remains physically parked. A new flight uses the same
 aircraft's actual stock and its own required departure fuel; do not reset fuel
 or repeat the original delivery. Remaining completion/final-check sequencing is
@@ -270,8 +285,9 @@ D-031/D-035 fault handling must preserve actual balances and cumulative
 delivery at the event time. If the Q-14 pump-failure candidate is adopted, stop
 further aviation-fuel transfer when pumping capability is lost; do not credit
 the aircraft with the original full request or reset either vehicle's stocks.
-The replacement serves the reviewed remaining deficit from actual aircraft fuel
-and current requirements. Define any fuel consumption during failure/return,
+The replacement serves the still-valid undelivered committed quantity; current
+flight sufficiency is a separate check and D-039 may cancel the old remainder.
+Define any fuel consumption during failure/return,
 partial-service accounting and repair duration explicitly; maintenance completion
 is not replenishment. Pump failure does not itself prove loss of tractor mobility.
 
@@ -282,7 +298,8 @@ is not replenishment. Pump failure does not itself prove loss of tractor mobilit
   reopening that behaviour or weakening the protected-return invariant.
 - **Q-06:** Choose canonical units, density, capacities, tolerances and the
   usable-fuel definition. Select the departure-fuel calculation and reserve
-  framework, and reconcile fuel-check timing with ETD changes and late arrivals.
+  framework, numerical check lead time and rescheduling after accepted ETD
+  changes, preserving the agreed immediate check on a late stand arrival.
 - **Q-07:** Detail the agreed depot diesel replenishment capability, minimum reserve,
   reachable-return calculation, travel/idle/pumping consumption assumptions,
   loading rates and setup/completion durations. Define tractor-to-tractor

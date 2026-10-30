@@ -5,9 +5,9 @@ recorded; depot transitions, three-stock guards, waiting/event-driven reassessme
 and in-motion assignment recorded; exceptional diesel assistance required;
 EDF benchmark specified; numerical fixtures open
 
-**Last updated:** 30 October 2026
+**Last updated:** 31 October 2026
 
-**Primary decisions:** D-009, D-016, D-017, D-018–D-038;
+**Primary decisions:** D-009, D-016, D-017, D-018–D-040;
 D-006 schedule clarified on 29 October 2026; resource branch D-015
 
 **Review question:** Q-12; dependencies Q-02, Q-05–Q-09, Q-11, Q-13
@@ -63,6 +63,8 @@ alone does not prove global optimality or a benefit over EDF.
 ETA/ETD may change over simulation time. A parked aircraft can have no demand;
 an inbound flight can be in the planning horizon without appearing on the apron.
 Historical meshes do not determine operational fuel profiles.
+An existing flight's ETD changes only after operator confirmation under D-040;
+a predicted or unaccepted proposed time is not an applied schedule event.
 
 **D-006 — schedule clarified; event details provisional:** Introduce F06 through an event such
 as `UnscheduledArrival` or `FlightDiversion`, for example an unavailable intended
@@ -146,8 +148,8 @@ Yerevan specifically to refuel and then continue its flight.
   arrival fuel and the calculated requirement for that next leg.
 - Check fuel after arrival and actual service readiness. If short, create a
   request; actual refuelling and a sufficient final check precede `Ready`.
-- For a short transit, do not mechanically wait for `ETD - lead_time` if that
-  time already passed before arrival. The final check-trigger rule is open under
+- For a short transit whose check time passed before arrival, check immediately
+  after the aircraft reaches its stand and stops (T2), under
   [D-007](domain_and_state_machines.md#fuel-check-and-request-lifecycle).
 - Compete in the same queue based on deadlines and consequences, not an
   automatic priority increase from the Transit label.
@@ -345,7 +347,7 @@ in a later Omniverse viewport implementation:
 | Near view of a refueller | Tractor label shows its name/current state and diesel bar; tank label separately shows aviation fuel and pump petrol |
 | Object movement and two field refuellers | Labels follow the correct tractor/tank/aircraft; identities and fuel stocks do not swap between vehicles |
 | Distant refueller label grouping, if used | One combined label retains name/state and three distinguishable stocks; zooming back in restores separate labels |
-| Aircraft label | Flight identity, departure date/time, current aircraft state and onboard-fuel bar match the current state; schedule changes update the departure display |
+| Aircraft label | Flight identity, agreed departure date/time, current aircraft state and onboard-fuel bar match current state; only an accepted ETD change replaces the scheduled label, while prediction/actual times stay distinct |
 | Independent stock changes | Diesel consumption, aviation-fuel transfer and pump-petrol consumption update only their respective balances; bar fill uses the corresponding tank capacity |
 | Missing display data | Unknown stock/capacity/date-time is distinguishable from an empty/full tank or a known departure; date/time zone is explicit |
 
@@ -400,38 +402,68 @@ against the same scenario events for EDF and cuOpt:
 | Explicit cancellation while ToAircraft | Cancel unstarted demand, preserve actual location/travel/time/fuel, review fleet assignments; redirect to feasible service, waiting or selected replenishment without an automatic depot trip |
 | Request quantity/timing revised before start | Recheck all three fuel and route/readiness/time guards; retain the assignment only if feasible and selected |
 | Departure time changed alone | Recalculate/replan as needed; do not automatically cancel the request |
-| Manual cancellation after aircraft Refueling starts | UI prevents the action; a late/stale cancellation command is rejected by execution; complete the original service conditions |
+| Manual cancellation while aircraft Refueling is running | UI prevents interruption; a late/stale command is rejected by execution; complete the original service conditions |
 | External withdrawal or revised quantity during service | Preserve the original started-service commitment and actual fuel accounting; do not release the tanker or change the active delivery target |
 | Flight cancelled during refuelling | Finish original delivery; release tanker under normal branching; aircraft remains fuelled and Parked without an active departure |
 | Provider assigns a new flight to that aircraft | Retain the physical aircraft and its actual onboard fuel; apply new flight demand/check rules without a fuel reset, duplicate aircraft or repeated original uplift |
 | Detected technical fault during committed service | D-035 stops aircraft work despite the original-condition commitment; preserve partial delivery/unserved demand and use the appropriate mobile return or scoped Alert recovery |
+| Flight cancelled in Alert before replacement arrival | T10 returns aircraft to Parked; cancel old undelivered commitment, retain actual onboard/issued fuel, release replacement for existing actual-position review |
+| Stale replacement-start action after that cancellation | Reject it; do not resume the cancelled request, transfer fuel or restore its pending quantity |
+| New flight after cancelled interrupted service | For an 8-tonne operation with 3 delivered and 5 cancelled, retain 3 onboard; a new 6-tonne onboard requirement creates 3 tonnes uplift at its check window, assuming no intervening burn |
 
 Specify original and revised request conditions and actual transfers so the
 comparison can prove the started target was retained. Verify D-029 totals:
 pre-service cancellation removes pending demand, ongoing committed delivery
 remains current work, and actual issued fuel is retained after flight cancellation.
+D-039 cancellation after interruption removes only the outstanding obligation
+from pending work; it neither reverses issued fuel nor marks the remainder delivered.
 Simultaneous start/cancellation ordering, full request enums and final-check
 closure remain Q-02/Q-05; this section records future validation, not test results.
 
 ## Aircraft Alert, Ready commitment and state vocabulary (D-036–D-038)
 
-Record these agreed expectations for the **next-session aircraft review**;
-this is not a completed review or executed validation:
+The aircraft requirements review was agreed on 31 October. These are future
+validation requirements, not executed tests or implemented behaviour:
 
 | Case | Expected behaviour |
 | --- | --- |
 | Tanker fault interrupts aircraft service | Aircraft Refueling to Alert, retaining actual stock and remaining need; faulty tanker withdraws under D-035 |
 | Replacement resumes service | Actual arrival/setup/checks permit aircraft Alert to Refueling; no reset or duplicate delivery |
 | Changed/new flight after earlier fuelling | At the current flight's check window use retained stock: sufficient means Ready; otherwise remain Parked with additional demand |
-| Flight cancelled before Ready | Aircraft remains Parked without an active flight until the provider assigns a new flight and its checks |
-| Aircraft enters Ready | It prepares/departs at departure time; scenario generation does not subsequently cancel/revise its flight or revoke readiness |
+| Flight cancelled while Parked | Remain Parked without an active flight; cancel unstarted demand and await a new flight/check |
+| Flight cancelled during running Refueling | Finish the original committed delivery, then Parked; use D-039 only for the separately reviewed interrupted-service case |
+| Flight cancelled in Alert before replacement arrival | Alert to Parked; old remainder cancelled and delivered fuel retained |
+| Aircraft enters Ready | Provider generates no readiness reversal; execution rejects equivalent operator/event commands; actual movement then zone exit follows Ready -> Departing -> Departed |
 | Tractor-diesel assistance | Both participants use Alert Refueling, while aircraft service uses Refueling; Repositioning remains general transit and task roles/destinations remain explicit |
 | Faulty tanker returning ToDepot | It remains technically unavailable for assignments/coverage despite being mobile |
 
-Next review must reconcile the full aircraft diagram, completion/final check,
-check windows opening during an existing service and readiness after the planned
-departure time. Do not silently resolve these timing cases or add Ready reversal
-events that contradict the selected simplification.
+### Aircraft transition and timing fixtures
+
+| Case | Required behaviour |
+| --- | --- |
+| Initial three aircraft on stands | Initialise Parked without fabricated arrival events; retain physical IDs and onboard stock |
+| ETA reached without actual approach event | Remain Expected; only actual approach starts Inbound |
+| Landed but still taxiing | Remain Inbound until assigned stand arrival and full stop |
+| First check finds sufficient fuel | Parked to Ready without a tanker request |
+| Late stand arrival after check time | Check immediately after T2; no wait for a future opening |
+| Delivery for an earlier flight completes before new flight's window | Parked despite sufficient stock; at the new window check retained fuel and enter Ready only if sufficient |
+| Current flight's window opens during running service | Do not interrupt committed delivery or duplicate its demand; evaluate current-flight sufficiency after completion |
+| Full agreed operation finishes but current-flight fuel is insufficient | Parked with additional calculated demand under its eligibility rules; retain the earlier actual delivery |
+| Refueller arrives but service has not begun | No premature Parked/Alert to Refueling; require actual start and guards |
+| Ready but stationary | Remain Ready; do not infer Departing from ETD alone |
+| Departing but not airborne/outside zone | Remain Departing; Departed requires both exit conditions |
+| Cancellation/replacement command after Ready | Execution rejects it, including a stale command; UI restriction alone is insufficient |
+| Delay risk during Alert | Warning remains separate from state and includes replacement feasibility/timing |
+| Keep Schedule with no feasible on-time plan | Preserve ETD and infeasibility/warning, not a fabricated feasible result |
+| Proposed or manually supplied new ETD | Operator confirms the change; validate against current state and replan without interrupting running service |
+| ETD 14:00, actual readiness 14:10 | Preserve scheduled 14:00 unless changed by the operator; continue actual departure without waiting for 14:00, backdating or hiding lateness |
+
+Use identical revealed events, operator actions and time-measurement conventions
+for EDF/cuOpt. Final-check/request closure, simultaneous cancellation/resumption
+ordering, cancellation after replacement arrival but before service, flight
+replacement without explicit cancellation while Alert, cancellation during
+running service followed later by a fault, and exact ETD/actual
+measurement points remain open. Do not invent their expected outcomes as tests.
 
 ## Validation requirements from the source proposal
 

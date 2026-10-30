@@ -3,9 +3,9 @@
 **Status:** Working draft; automatic dispatch required; queue/non-interruption
 principles retained; operator modes, cost/deadline policy and solver interface open
 
-**Last updated:** 30 October 2026
+**Last updated:** 31 October 2026
 
-**Primary decisions:** D-011, D-027
+**Primary decisions:** D-011, D-027, D-040
 
 **Review questions:** Q-08, Q-09, Q-13; state/clock dependencies Q-01, Q-02
 
@@ -29,6 +29,39 @@ give maximum **refuelling** priority. This policy does not rank landing traffic.
 Internal `priorityScore` is not a replacement for the existing USD integer
 priority. Mapping to `1` (highest) through `5` (lowest) belongs to the reviewed
 [USD presentation contract](usd_presentation_contract.md#schema-compatibility).
+
+## Departure delay risk and schedule authority (D-040)
+
+**Agreed in discussion, 31 October 2026:** `Departure Delay Risk` is a warning,
+not an aircraft state. Assess it for an active flight in Parked, Refueling or
+Alert, including replacement travel/waiting after interrupted service. Predict
+whether service and preparation can meet the agreed departure time, try feasible
+replanning and explain any predicted delay. A schedule change does not itself
+put an aircraft in Alert or interrupt running service.
+
+Keep the agreed scheduled ETD, predicted departure and actual stand-departure/
+take-off times distinct. A prediction is not an accepted schedule change. The
+operator decides whether to change the existing ETD; neither the provider's
+runtime schedule-change input nor a solver result may bypass that decision.
+Initial scenario schedules and the ETD of a newly assigned flight are inputs,
+not silent rewrites of an existing flight's agreed time.
+
+| Operator action | Required behaviour |
+| --- | --- |
+| Keep Schedule | Retain agreed ETD and recalculate service; preserve the warning and infeasibility/lateness if the original time cannot be met |
+| Accept Proposed Time | Apply the operator-confirmed proposed ETD and recalculate using current state |
+| Set Time Manually | Validate the supplied time and affected guards, then apply/recalculate; do not label an infeasible choice feasible |
+
+ETD changes require operator confirmation; this does not impose confirmation on
+every tanker dispatch or settle Q-13's remaining operating modes. Running
+delivery remains committed under D-034. D-037 rejects flight changes after Ready.
+
+If ETD is 14:00 and readiness is reached at 14:10, retain 14:00 unless the
+operator has changed it. Continue Ready -> Departing -> Departed using actual
+events and retain lateness; do not wait for a past timestamp, backdate movement
+or automatically rewrite ETD. Exact preparation duration, the scheduled ETD's
+measurement point and like-for-like delay metrics remain Q-02/Q-08/Q-12 details.
+Keep scheduled, predicted and actual times labelled distinctly in the UI.
 
 ## Routing objective and EDF baseline
 
@@ -159,13 +192,18 @@ departure time alone does not cancel it.
 
 **D-034 — started-service commitment agreed:** Freeze the service conditions on
 entry to aircraft Refueling and complete that delivery under the original
-conditions. Manual cancellation is unavailable after start and must also be
+conditions. Manual cancellation during running service is unavailable and must also be
 rejected by execution if a late/stale command arrives. External request withdrawal,
 flight cancellation or schedule revision does not release that active commitment.
 Finish service, then release the tanker normally. A cancelled-flight aircraft
 remains fuelled and parked until the provider assigns it a new flight; use its
 actual onboard fuel for that new flight's demand calculation. D-035 technical
 withdrawal overrides normal service continuation; Q-14 selects concrete faults.
+Under D-039, flight cancellation in aircraft Alert before replacement arrival
+cancels the outstanding old-request obligation, releases the replacement for
+actual-position reassignment and leaves delivered fuel intact. It does not
+authorise interruption of running Refueling, change the faulty tanker's return
+path or create a field-parking bypass.
 
 **Review finding:** “Raise priority” and “serve next” do not yet specify the
 same scheduling guarantee. Decide whether the action changes a soft preference
@@ -234,6 +272,9 @@ waiting exceeding one hour without assignment, retain the vehicle if a flight's
 check window opens within the next hour; otherwise move it to Main Parking.
 The dwell-threshold crossing is itself a timed trigger. No polling frequency is
 agreed. The one-hour dwell rule does not defer response to new demand/events.
+For an existing flight's ETD, apply D-040: evaluating an unaccepted time proposal
+does not change the authoritative check window or redirect a vehicle as if the
+operator had accepted it. Reassess executable work on the applied schedule.
 
 Distinguish anticipated demand from an eligible service request. A known upcoming
 12-tonne uplift first triggers D-027 assignment review for a tanker carrying
@@ -313,10 +354,12 @@ its travel state is ToDepot.
 D-036 changes an interrupted **aircraft** to Alert while the failed tanker
 withdraws; resume Alert to Refueling only when the replacement actually starts
 service after required checks/setup. Preserve actual fuel and remaining demand.
-D-037 makes Ready irreversible in this demonstration: the provider does not
-cancel/revise that flight or revoke readiness afterwards, and it departs at its
-departure time. Changed/new flights before Ready use their own check window and
-retained aircraft stock. The full aircraft review is deferred to next session.
+D-039 cancels the remainder if the flight is cancelled in Alert before replacement
+arrival; stale replacement assignments must not resume that work. D-037 makes
+Ready irreversible for the provider, operator and execution alike. Changed/new
+flights before Ready use their own check window and retained stock; completion
+of an older delivery cannot grant Ready before that window. Actual departure
+uses Ready -> Departing -> Departed and D-040's late-readiness rule.
 
 ## Operator acceptance and unresolved result handling
 
@@ -366,10 +409,13 @@ effects and visible outcome of each action: manual request, Serve next, accept,
 reject and any later revise/cancel/reset controls. These are contract questions,
 not additional approved UI features.
 
-D-033/D-034 fix cancellation behaviour and the started-service restriction;
+D-033/D-034/D-039 fix cancellation behaviour and the running-service restriction;
 command transport, data/version formats and exact simultaneous-event ordering
 remain implementation contracts. This does not approve unrelated revise/reset
-controls or reopen the agreed restriction.
+controls or reopen the agreed restriction. D-040 fixes operator authority over
+ETD changes without resolving the other Q-13 mode/command questions. Reject
+cancellation, flight replacement and readiness reversal after Ready in execution,
+including stale commands; disabling a UI control alone is insufficient.
 
 Review findings to address before implementation:
 

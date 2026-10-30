@@ -6,13 +6,13 @@ safe diesel return and exceptional assistance required; depot transitions 5–7
 and three-resource dispatch checks recorded; waiting arrival, direct in-motion
 assignment and event-driven waiting/relief rules agreed; remaining details open;
 Maintenance framework and fault withdrawal agreed; fault catalogue and recovery detail
-open; D-033/D-034 cancellation and started-service rules agreed; full aircraft
-and request lifecycles remain provisional
+open; eight aircraft states and reviewed transitions agreed on 31 October;
+request records, event ordering and remaining boundary cases open
 
-**Last updated:** 30 October 2026
+**Last updated:** 31 October 2026
 
 **Primary decisions:** D-003, D-006, D-007, D-010, D-012, D-013, D-014, D-015,
-D-016, D-017, D-018, D-019, D-020, D-022–D-026, D-030–D-038; dependencies D-021, D-027
+D-016, D-017, D-018, D-019, D-020, D-022–D-026, D-030–D-040; dependencies D-021, D-027
 
 **Review questions:** Q-03, Q-04, Q-05, Q-14; fuel dependencies Q-06, Q-07; modes Q-13
 
@@ -42,14 +42,60 @@ Exact field names and serialisation beyond the recorded examples remain open.
 
 ## Aircraft lifecycle
 
-**D-006 — provisional:** `Scheduled` and `Diversion` describe arrival type. The
-candidate normal aircraft sequence is (D-034/D-036 exceptional branches are below):
+**D-006 — agreed in discussion, 31 October 2026:** Use exactly eight aircraft
+states. `Scheduled` and `Diversion` remain arrival types, not states.
 
-```text
-Expected -> Inbound -> Parked -> Refueling -> Ready -> Departed
-                         \------------------> Ready
-                           if fuel is sufficient (D-007 proposal)
+| State | Meaning |
+| --- | --- |
+| `Expected` | Known arrival whose actual approach has not begun |
+| `Inbound` | Actual approach, landing and taxi to the assigned stand |
+| `Parked` | Stopped at its stand, awaiting a check, service or a new flight |
+| `Refueling` | Aircraft service by a refueller has actually started |
+| `Alert` | A refueller fault interrupted aircraft service; awaiting replacement |
+| `Ready` | Fuel-ready, committed preparation for departure under D-037 |
+| `Departing` | Actual movement from the stand, taxi, take-off run and take-off |
+| `Departed` | Airborne and outside the simulation zone; terminal for this scenario |
+
+```mermaid
+stateDiagram-v2
+    [*] --> Expected
+    Expected --> Inbound: Actual approach begins
+    Inbound --> Parked: Assigned stand reached and stopped
+    Parked --> Refueling: Eligible service actually starts
+    Parked --> Ready: Current-flight check passes
+    Refueling --> Ready: Service complete and readiness guards pass
+    Refueling --> Parked: Deficit, cancelled flight or future check window
+    Refueling --> Alert: Refueller technical fault
+    Alert --> Refueling: Replacement actually resumes valid service
+    Alert --> Parked: Flight cancelled before replacement arrival
+    Ready --> Departing: Actual departure movement begins
+    Departing --> Departed: Airborne and outside simulation zone
+    Departed --> [*]
 ```
+
+Aircraft already on stands may initialise in `Parked`; they need not replay an
+arrival. Initialisation is not an extra runtime transition. No separate landing,
+taxiing, fuel-check or delay-risk state is required.
+
+### Aircraft transitions
+
+| ID | Transition | Trigger and guards | Required outcome |
+| --- | --- | --- | --- |
+| T1 | `Expected -> Inbound` | Provider reports actual approach start; ETA alone is insufficient | Begin the approach/landing/taxi phase |
+| T2 | `Inbound -> Parked` | Assigned stand actually reached and aircraft fully stopped | Apply the current flight's check immediately if its window is already open |
+| T3 | `Parked -> Ready` | Current-flight check window open, active flight and sufficient actual onboard fuel | Commit readiness under D-037; otherwise remain Parked and calculate deficit demand |
+| T4 | `Parked -> Refueling` | Refueller actually arrives, aircraft eligible/ready to receive fuel and service starts | Commit the agreed service conditions under D-034; setup may be included in service duration |
+| T5 | `Refueling -> Ready / Parked` | Agreed operation finishes; evaluate actual stock, current flight and its check window | Ready only if the active current flight's window is open and fuel is sufficient; otherwise Parked. Create additional demand for a current-flight deficit when eligible; a cancelled flight has no active demand |
+| T6 | `Ready -> Departing` | Actual movement from the stand for departure begins | Retain the commitment; do not infer movement from ETD alone |
+| T7 | `Departing -> Departed` | Aircraft is airborne and has left the simulation zone | End that aircraft's participation in the current scenario |
+| T8 | `Refueling -> Alert` | Refueller technical fault interrupts service | Stop transfer, retain actual stock and outstanding committed quantity; faulty refueller follows D-035 |
+| T9 | `Alert -> Refueling` | Replacement actually arrives and starts valid resumed service after checks/setup; outstanding commitment has not been cancelled | Transfer only the undelivered committed quantity; do not repeat earlier delivery |
+| T10 | `Alert -> Parked` | Flight cancelled before replacement arrival (D-039) | Cancel the outstanding old-request commitment, retain delivered fuel and await a new flight/check |
+
+`Parked -> Refueling` may recur for additional eligible demand. `FuelChecked`
+and `Sufficient` are check results, not aircraft states. Service completion and
+departure guards must prevent aircraft movement while servicing equipment still
+prevents it; detailed teardown and request-closure ordering remain Q-05.
 
 An aircraft awaiting a tanker stays `Parked` until refuelling actually begins;
 the request carries waiting/queue information. An inbound flight can be known to
@@ -61,27 +107,26 @@ possible sixth unscheduled arrival. The event can trigger a revised plan. The
 earlier requirement for operator confirmation of every such change is reopened:
 automatic dispatch is required, while the mode-specific confirmation and
 intervention contract is open under [Q-13](planning_and_operator_workflow.md#operator-acceptance-and-unresolved-result-handling).
-Taxiing visuals, additional lifecycle stages and fault interruption cases
-remain open. D-033/D-034 define cancellation handling without finalising the
-complete aircraft/request enums. D-037 fixes the demonstration assumption that
-Ready is committed preparation for departure, with no later cancellation or
-readiness reversal. Other departure prerequisites are assumed satisfied rather
-than implemented as a full pre-flight inspection model. The complete aircraft
-transition review is the first task for the next session.
+Physical animation need not depict every logical setup operation. D-037 fixes
+committed readiness, not a full ATC or pre-flight inspection model. The eight
+aircraft states are agreed; request enums and the remaining Q-05 boundary cases
+are not thereby finalised. D-040 separates schedule, prediction and actual
+departure. The existing tanker state machine is unchanged by this review.
 
 ## Fuel check and request lifecycle
 
-**D-007 — proposed working formulation:** For each flight, configure ETD and
+**D-007 — behaviour agreed, numerical timing open:** For each flight, configure ETD and
 `predeparture_check_lead_time`. The proposed check time is `ETD - lead_time`;
 1–2 hours is an example, not an agreed value. Compare `aircraft.fuel_onboard`
 with `required_departure_fuel` from the [fuel model](fuel_and_service_model.md#aircraft-demand-model).
 
-| Proposed outcome | Aircraft effect | Request effect |
+| Outcome | Aircraft effect | Request effect |
 | --- | --- | --- |
 | Sufficient fuel | `Parked -> Ready` | No refueller call required |
 | Insufficient fuel | Remain `Parked` until actual service starts | Create a request for the calculated deficit |
 | Refuelling starts | Aircraft and refueller enter their own `Refueling` states | Active-service representation remains to be defined |
-| Final check sufficient | Aircraft may become Ready for its active flight; D-034's cancelled-flight case remains Parked without an active flight | Completion semantics remain to be defined |
+| Final check sufficient and current-flight window open | Ready for the active current flight; a cancelled flight remains Parked | Completion/closure record ordering remains to be defined |
+| Delivery complete before changed/new flight's window | Parked even if actual stock is already sufficient | Completed delivery is retained; do not create a premature new service request |
 | Current-flight check insufficient at its check window (D-037) | Remain Parked, awaiting additional service | Retain/create calculated additional demand using actual onboard fuel; detailed closure/identity remains open |
 
 `FuelChecked / Sufficient` describes a check result, not a persistent aircraft
@@ -89,11 +134,14 @@ state. The flight's request has its own lifecycle; no request enum has yet been
 agreed. The source proposal's examples of request stages (not requested, pending,
 ready, refuelling, completed) are descriptive examples only.
 
-Lead time, demand recalculation after ETD changes, a late diversion and early
-tanker arrival need further rules. Cancellation/revision follows D-033/D-034
-below. For the provisional [transit fuel-stop scenario](scenarios_and_validation.md#scheduled-transit-fuel-stop),
-check at actual stand/service readiness rather than mechanically waiting for a
-scheduled check time that already passed; the exact trigger is still open.
+The first routine check creating a flight's service request occurs in Parked,
+not inside Refueling. If the check time has passed at actual stand arrival,
+perform it immediately after T2. A changed/new flight uses its own window and
+retained fuel; delivery completion does not open that window early. If the
+window opens during an already committed operation, do not interrupt it or
+duplicate its demand; assess readiness after completion. Exact lead time,
+ETD-change rescheduling and same-time event ordering remain Q-02/Q-06.
+Cancellation/revision follows D-033/D-034 and the D-039 exception below.
 
 **Review finding:** D-014 says the current request is closed after refuelling.
 D-007 permits an insufficient final check and request revision. Decide the
@@ -137,7 +185,7 @@ withdrawal, flight cancellation, schedule change or demand revision. Such events
 do not rewrite the active delivery quantity or release the tanker early.
 The exact commitment record/version format remains open.
 
-Manual cancellation of a request whose service has started is **not allowed**.
+Manual cancellation while committed aircraft service is running is **not allowed**.
 The UI must make that restriction clear, and execution must also reject a late
 cancellation command rather than relying only on a disabled button. An external
 withdrawal/cancellation event may still be recorded, but does not cancel the
@@ -160,6 +208,9 @@ Ordinary cancellation/replanning must not interrupt committed service. D-035
 requires immediate aircraft-service withdrawal on any detected technical fault,
 even when some equipment can still function; Q-14 selects the event catalogue.
 D-034 does not override that technical-fault withdrawal rule.
+**31 October exception (D-039):** After fault interruption, cancellation while
+the aircraft is Alert and before replacement arrival cancels the old undelivered
+commitment. This is not permission to interrupt running service manually.
 Completion of the committed delivery and fuel-readiness for an updated/new
 flight are distinct outcomes; final-check/request-closure sequencing still
 requires the remaining Q-05 contract.
@@ -172,7 +223,7 @@ retaining its actual onboard fuel and remaining service need. This identifies
 an abnormal interruption, not a mechanical fault in the aircraft. It waits for
 a replacement refueller. On actual arrival, readiness/setup and service guards
 passing, use `Alert -> Refueling` to resume delivery of the reviewed outstanding
-quantity. The faulty refueller follows D-035 separately. Aircraft and tanker
+quantity, unless D-039 has cancelled that commitment. The faulty refueller follows D-035 separately. Aircraft and tanker
 Alert are entity-specific states, not a shared lifecycle or assignment.
 
 **D-037 — agreed in discussion:** After an earlier delivery, a changed flight
@@ -190,17 +241,52 @@ fuel-check window**, using actual retained onboard fuel:
 For this demonstration, **Ready commits the aircraft to departure**: once it
 enters Ready, no later cancellation, flight change, fuel deficit or reversal of
 readiness is generated. The provider/scenario must respect this simplification.
-The aircraft prepares for departure and changes `Ready -> Departed` at its
-departure time. Do not add Ready-to-Parked/Alert failure branches to this scope.
+Execution must enforce this invariant for operator commands and other event
+sources as well as the provider: reject cancellation, flight replacement or
+readiness-revoking commands after Ready. The allowed continuation is
+`Ready -> Departing -> Departed`, on actual movement and zone exit. D-040 governs
+late readiness without a retrospective schedule rewrite. Do not add
+Ready-to-Parked/Alert failure branches to this scope.
 D-034's fixed started-delivery conditions remain unchanged: a revised flight
 does not rewrite an in-progress delivery; its own fuel check uses actual stock.
 
-**Next session:** Review the full aircraft state/transition scheme first, using
-D-034/D-036/D-037, including interrupted service, cancelled/reassigned flights,
-normal completion and readiness. Resolve check-window timing when the window
-opens during service, and chronology if readiness would occur after the planned
-departure time. These open timing cases do not undo the agreed Ready commitment
-or silently introduce a cancellation after Ready.
+### Interrupted-service cancellation (D-039)
+
+**Agreed in discussion, 31 October 2026:** If the flight is cancelled while the
+aircraft is Alert after a refueller fault and the replacement has not arrived,
+use `Alert -> Parked`, remove the active flight and cancel the old request's
+undelivered obligation. Previously delivered fuel remains onboard and in actual
+issued-fuel history. Mark the remainder cancelled, not delivered or completed.
+
+Release any replacement assignment for review from that vehicle's actual
+position, preserving its travel, elapsed time and all fuel stocks. Use the
+existing D-033 reassignment rules and all tanker/coverage guards; this adds no
+tanker state or new route exception. A stale dispatch/service-start action for
+the cancelled request must not resume delivery.
+
+A new flight uses the same physical aircraft and retained stock. At its own
+check window, sufficient fuel permits Ready; otherwise create a calculated
+deficit request. Do not resurrect the cancelled remainder or count its earlier
+delivery twice. For example, an 8-tonne operation interrupted after 3 tonnes
+leaves 3 tonnes delivered and 5 tonnes cancelled. If the new flight needs 6
+tonnes onboard, its uplift is 3 tonnes, not 5 or 6 (assuming no intervening burn).
+
+The agreed exception is cancellation before replacement arrival. Cancellation
+after arrival but before resumed service, and flight replacement without an
+explicit cancellation while Alert, remain Q-05 boundary cases. Also specify
+the distinct sequence of cancellation during running service followed later by
+a fault; do not infer an extra cancellation event on Alert entry. While resumed
+Refueling is running, D-034 applies again. The failed tanker's D-035 withdrawal
+and maintenance path is unaffected.
+
+### Departure timing boundary
+
+See [D-040](planning_and_operator_workflow.md#departure-delay-risk-and-schedule-authority-d-040)
+for the agreed distinction between scheduled ETD, predicted departure and actual
+movement/take-off. Keep Schedule preserves the schedule, not a claim of
+feasibility. If readiness occurs after ETD, continue the actual departure
+sequence with lateness retained; never wait for a timestamp already passed.
+Detailed preparation duration and movement scheduling remain to be specified.
 
 ## Tanker states
 
@@ -806,12 +892,14 @@ Current refuelling is not interrupted merely because another request gains prior
   readiness criteria and handover timing that preserves physical field coverage.
   D-030 closes direct assignment during the Loading movement to depot parking;
   simultaneous-event ordering remains under Q-02.
-- **Q-05:** D-033/D-034 close pre-service cancellation/revision and started-service
-  commitment, including a cancelled flight's parked fuelled aircraft awaiting a
-  new flight. Complete the remaining lifecycles, commitment/ID records and fault
-  interruption cases. Reconcile final fuel check with request closure and
-  apply D-037's fixed Ready commitment and agree simultaneous state updates. Define the
-  assistance-request lifecycle without conflating it with aircraft fuel demand.
+- **Q-05:** Eight aircraft states, T1–T10, current-flight check gating and the
+  D-039 cancellation exception are agreed. Define request/commitment identities,
+  final-check/closure/teardown ordering and atomic updates; cancellation after
+  replacement arrival but before resumption; replacement without explicit
+  cancellation while Alert; cancellation during running service followed later
+  by a fault; and the boundary for a fault after the full uplift
+  but before service release. Cancellation outside the reviewed parked/service
+  cases is not implicitly approved. Define assistance requests separately.
 - **Q-06/Q-07 dependencies:** Define the resource guards required by each
   reviewed transition using the agreed depot replenishment capability, without
   guessing units, reserve values, stock quantities or replenishment rates.

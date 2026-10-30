@@ -3,7 +3,7 @@
 **Status:** Working draft; one-way projection, vehicle/aircraft labels and fuel
 statistics panel agreed in discussion; schema v1.0 compatibility/bindings unresolved
 
-**Last updated:** 30 October 2026
+**Last updated:** 31 October 2026
 
 **Primary decisions:** D-002, D-028, D-029
 
@@ -193,15 +193,24 @@ actual fuel and remaining need; show resumption only on actual replacement
 service start. It does not indicate an aircraft mechanical fault. D-037 Ready
 is committed departure preparation in this demonstration: no cancellation or
 readiness reversal is generated after it. Changed/new-flight labels and fuel
-checks before Ready use the current flight and retained fuel. D-038's Refueling
+checks before Ready use the current flight's open check window and retained fuel;
+completion of an older delivery cannot grant early Ready. Execution also rejects
+operator commands that would revoke Ready, cancel or replace that flight.
+D-038's Refueling
 and Alert Refueling must be visually distinguishable; layout/schema decisions
-remain later work and the full aircraft scheme is reviewed next session.
+remain later work. Show the eight D-006 aircraft states, including Departing
+for actual movement/take-off and Departed only after airborne zone exit.
 
 D-033/D-034 distinguish cancellation before service from a withdrawn/cancelled
-flight with a still-committed delivery. After aircraft Refueling starts, disable
+flight with a still-committed delivery. While aircraft Refueling is running, disable
 manual request cancellation and explain that service will finish under its
 original conditions; a late execution command must also be rejected. Reflect
 request revisions/cancellation and the current executable route consistently.
+Under D-039, flight cancellation in Alert before replacement arrival instead
+shows Parked with no active flight, retains onboard fuel and actual issued
+history, and removes the old undelivered remainder from pending work. Do not
+show that remainder as completed or leave a cancelled replacement route current.
+The failed refueller remains unavailable under its existing lifecycle.
 
 For a flight cancelled during service, show the ongoing original delivery and
 actual stock changes, then the fuelled Parked aircraft with no active departure.
@@ -212,6 +221,23 @@ before-service cancellation removes pending demand, while an active committed
 delivery remains in current work until completed or D-035 technical withdrawal.
 Detailed metrics still follow D-029's reviewed quantity definitions. UI layout
 and concrete fields remain Q-10; this adds no implementation or schema version.
+
+## Departure warning and time presentation (D-040)
+
+Show Departure Delay Risk separately from aircraft state in Parked, Refueling
+and Alert. A tanker failure must not clear an active flight's delay warning.
+Explain the limiting service/replacement time and distinguish the agreed ETD,
+predicted departure, and actual stand-departure/take-off times. A prediction or
+an unaccepted proposed time must not replace the scheduled label.
+
+Expose Keep Schedule, Accept Proposed Time and Set Time Manually according to
+the [operator contract](planning_and_operator_workflow.md#departure-delay-risk-and-schedule-authority-d-040).
+Keeping an infeasible schedule retains the warning; accepting or entering a
+time requires operator confirmation and current-state validation. After Ready,
+flight-changing controls are unavailable and equivalent execution commands are
+rejected. A late-ready aircraft continues actual departure without backdating
+movement or silently changing ETD. These are information/behaviour requirements,
+not an approved widget layout or new USD field schema.
 
 ## Preserved scene fundamentals
 

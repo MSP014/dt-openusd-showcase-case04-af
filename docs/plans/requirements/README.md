@@ -2,9 +2,9 @@
 
 **Status:** Working drafts; requirements review in progress
 
-**Last updated:** 30 October 2026 (Asia/Yerevan)
+**Last updated:** 31 October 2026 (Asia/Yerevan)
 
-**Source discussions:** 28–30 October 2026
+**Source discussions:** 28–31 October 2026
 
 **Implementation status:** This collection describes intended behaviour. It does
 not establish a working provider, fuel model, priority engine, cuOpt integration
@@ -79,16 +79,16 @@ decision statuses recorded in the source notes; restructuring is not approval.
 | --- | --- | --- | --- |
 | This README | Navigation, decision provenance and review queue assembled | Keep this table, the checkpoint and decision register aligned after each reviewed change | All topic documents |
 | [Architecture](architecture.md) | Ownership principles agreed in discussion; automatic-dispatch capability clarified; event/time and authorisation contracts incomplete | Resolve Q-01/Q-02 and align mode-dependent execution authorisation with Q-13 | Domain entities; operating-mode contract |
-| [Domain and state machines](domain_and_state_machines.md) | Nine tanker states including Alert Refueling; aircraft interrupted-service Alert and irreversible Ready agreed; full aircraft scheme awaits next review | First next session: review aircraft transitions with D-034/D-036/D-037; then remaining Q-05/time cases, Q-14 catalogue and Q-03/Q-07 detail | Entity-specific states; fuel checks; schedule events and field coverage |
+| [Domain and state machines](domain_and_state_machines.md) | Eight aircraft states/T1–T10 agreed; nine tanker states retained; interrupted-service cancellation and current-flight check gating recorded | Finish Q-05 request/closure and interruption boundaries, Q-02 ordering, Q-14 catalogue and Q-03/Q-07 detail | Entity-specific states; fuel checks; schedule events and field coverage |
 | [Fuel and service model](fuel_and_service_model.md) | Three independent stocks, assignment-review-first shortage policy, depot post order, separate auxiliary dispensers and protected return/assistance recorded; units/rates open | Define pump-petrol profile/reserve and remaining depot service/visit details; quantify diesel return/donation and fuel checks (Q-06, Q-07) | Equipment profiles; domain lifecycle |
-| [Planning and operator workflow](planning_and_operator_workflow.md) | D-027 joint assignment/order/replenishment comparison and concurrent field work recorded; automatic dispatch required; operator modes open | Fix planning horizon and fleet cost/deadline policy (Q-08), operator modes (Q-13) and solver interface (Q-09); validate savings against EDF | Domain states; physical constraints; EDF comparison |
+| [Planning and operator workflow](planning_and_operator_workflow.md) | D-027 fleet comparison and automatic dispatch retained; D-040 fixes separate delay warning and operator authority over ETD changes | Fix horizon/cost policy (Q-08), remaining modes (Q-13), time measurement and solver interface (Q-09); validate against EDF | Domain states; physical constraints; EDF comparison |
 | [USD presentation contract](usd_presentation_contract.md) | One-way projection, D-028 object labels/fuel bars and D-029 issued/in-progress/awaiting fuel statistics recorded; schema v1.0 conflicts unresolved | Define label bindings and panel metric/period semantics alongside projection/migration (Q-10); design UI later | Domain/request fields, accounting, fuel profiles and ownership |
 | [Scenarios and validation](scenarios_and_validation.md) | Demonstration, all shortage combinations, exclusive depot posts, waiting thresholds/events, actual-position reassignment, proactive return/relief and assistance cases recorded; EDF benchmark specified; no measured solver advantage | Fix common EDF/cuOpt inputs and depot/waiting/rotation/recovery fixtures and thresholds (Q-12); retain separate diesel and petrol accounting | Fuel profiles; lifecycle; objective and operating modes |
 | [Reference profiles](reference_profiles.md) | Source claims retained; separate pump drive corroborated; exact early variant and numerical performance unverified | Verify pump-engine/tank variant and select capacities, consumption, rates and reserves; continue aircraft/destination review (Q-11) | Intended scene configuration and fuel model |
 
 ## Resume checkpoint
 
-The decision register now extends through D-038. Recorded depot agreements are
+The decision register now extends through D-040. Recorded depot agreements are
 **D-018 / depot arrival and operations**, **D-019 / completion without an assignment**, **D-020 / direct
 assigned departure** and **D-021 / three independent refueller fuel stocks**.
 Transitions 5–7 are now recorded rather than waiting for first discussion.
@@ -154,19 +154,52 @@ and complete that delivery despite later withdrawal/revision/flight cancellation
 Manual cancellation after start is blocked and late commands rejected. If the
 flight is cancelled, the fuelled aircraft stays Parked without an active flight
 until the provider assigns it a new flight, using its actual retained fuel.
-D-035 detected-fault withdrawal overrides normal service continuation. Q-05 still owns the full lifecycle and
-completion/final-check contract; Q-02 owns simultaneous-event ordering.
+D-035 detected-fault withdrawal overrides normal service continuation. D-039
+adds the explicit cancellation exception after interruption, while Alert and
+before replacement arrival. Q-05 still owns request/commitment records and
+completion/final-check ordering; Q-02 owns simultaneous-event ordering.
 
-**Next session first: a second review of aircraft states and transitions.**
-Use the following newly agreed rules rather than reopening them: D-036 gives
-an aircraft `Refueling -> Alert -> Refueling` when its tanker fails, preserving
-actual fuel and remaining service need. D-037 checks retained fuel for a changed
-or new flight at its own pre-departure check window: sufficient means Ready;
-insufficient means Parked with additional demand; cancellation means Parked
-awaiting a new flight. Once Ready, the aircraft definitely prepares/departs at
-departure time; the provider must not generate subsequent cancellation, flight
-change or loss of readiness. Review the full diagram, service completion,
-check-window/service overlap and late-readiness chronology next time.
+**31 October aircraft review completed in discussion:** D-006 now fixes eight
+states and T1–T10, including actual approach/stand arrival, Departing and airborne
+zone exit. D-007 fixes immediate checks after late stand arrival and separates
+check results from states. A changed/new flight uses its own check window;
+finishing an earlier delivery before that window leaves the aircraft Parked,
+even when fuel is sufficient. Running service is not interrupted by a window
+opening or schedule revision, and its demand must not be duplicated.
+
+**D-039 — interrupted-service cancellation:** If the flight is cancelled in
+aircraft Alert before replacement arrival, cancel the old undelivered obligation,
+return the aircraft to Parked without an active flight and retain actual fuel.
+Release the replacement for existing actual-position reassignment; the failed
+tanker's withdrawal remains unchanged. A new flight gets a new check and only
+its calculated deficit. Running Refueling still follows D-034. Cancellation
+after replacement arrival but before resumed service and replacement without
+explicit cancellation while Alert remain open, as does cancellation during
+running service followed later by a fault; do not silently extend D-039.
+
+**Ready and departure timing:** D-037 is enforced for the provider and all
+operator/event inputs: no cancellation, flight replacement or readiness reversal
+after Ready. Continue Ready -> Departing -> Departed on actual movement/exit.
+D-040 separates scheduled ETD, prediction and actual departure; an operator must
+confirm ETD changes. Keep Schedule preserves an infeasible time and its warning,
+not an invented feasible plan. Late readiness must not wait for a past timestamp
+or rewrite ETD automatically. Departure Delay Risk is separate from state and
+applies in Parked, Refueling and Alert. Automatic tanker dispatch remains required.
+
+**Next session — first step:** Work through one end-to-end numerical scenario
+linking the fuel-request lifecycle, aircraft onboard fuel and all three
+refueller balances. Trace events, agreed/delivered/outstanding/cancelled
+quantities and state changes, including interruption, cancellation and a new
+flight, without duplicate transfers or fuel resets. Use explicitly declared
+illustrative units, rates and timings; do not treat them as approved equipment
+parameters. Use the trace to identify the request/event contracts still needed
+before implementation.
+
+**Subsequent requirements review:** Complete request/commitment identity and closure,
+the remaining interruption boundaries, exact ETD/actual measurement points and
+same-time event ordering. Then resolve Q-14's fault catalogue and numerical fuel,
+service, coverage and operator-mode contracts. The aircraft state list and the
+existing tanker transitions are not reopened by these remaining details.
 
 **State vocabulary (D-038):** Refueling means aircraft service only; Alert
 Refueling means tractor-diesel rescue. Repositioning remains one general
@@ -279,7 +312,9 @@ confirms D-031's framework and immediate technical withdrawal with mobile
 ToDepot-to-Maintenance return, separating mechanics from the fault catalogue.
 D-036/D-037 record interrupted-aircraft Alert and committed Ready; D-038 splits
 Alert Refueling from aircraft Refueling and keeps one Repositioning state.
-The aircraft review is explicitly deferred to the next session. These are provenance IDs,
+The 31 October review agrees D-006/D-007 aircraft behaviour and T1–T10, extends
+D-037 enforcement to operator commands, adds D-039 interrupted-service
+cancellation and D-040 schedule authority/delay warnings. These are provenance IDs,
 not ADR numbers. Each has one primary home; other documents link to that definition.
 
 | ID | Recorded status | Decision and primary home |
@@ -289,8 +324,8 @@ not ADR numbers. Each has one primary home; other documents link to that definit
 | D-003 | Direction agreed | [Separate lifecycles](domain_and_state_machines.md#entities-and-lifecycles) |
 | D-004 | Agreed in discussion | [Unlimited aviation-fuel supply at depot](fuel_and_service_model.md#depot-and-resource-accounting) |
 | D-005 | Numerical separation agreed in direction; units proposed; extended by D-021 | [Separate numerical fuel balances](fuel_and_service_model.md#quantities-and-units) |
-| D-006 | Provisional; blanket operator-confirmation assumption reopened by Q-13 | [Aircraft lifecycle and arrival type](domain_and_state_machines.md#aircraft-lifecycle); use the clarified 3 + 2 + optional 1 schedule |
-| D-007 | Proposed | [Pre-departure fuel check](domain_and_state_machines.md#fuel-check-and-request-lifecycle) |
+| D-006 | Eight aircraft states and T1–T10 agreed on 31 October; request records and boundary cases open | [Aircraft lifecycle and arrival type](domain_and_state_machines.md#aircraft-lifecycle); retain the 3 + 2 + optional 1 schedule |
+| D-007 | Check behaviour agreed, including late-arrival and current-flight window guards; numerical lead time and ETD rescheduling open | [Pre-departure fuel check](domain_and_state_machines.md#fuel-check-and-request-lifecycle) |
 | D-008 | Direction agreed | [Yerevan, destinations and next flight leg](reference_profiles.md#destinations-and-flight-legs) |
 | D-009 | Provisional user proposal | [Scheduled transit fuel stop](scenarios_and_validation.md#scheduled-transit-fuel-stop) |
 | D-010 | Basic model agreed; D-032 extends original seven states with Alert | [Tanker states and sequential service](domain_and_state_machines.md#tanker-states) |
@@ -317,11 +352,13 @@ not ADR numbers. Each has one primary home; other documents link to that definit
 | D-031 | Maintenance framework agreed, clarified by D-035; concrete fault events, repair evidence/durations and spatial detail open | [Maintenance framework and fault catalogue](domain_and_state_machines.md#maintenance-framework-and-fault-catalogue-d-031) |
 | D-032 | Agreed assistance sequence; D-038 names the transfer state Alert Refueling; busy-donor waiting, depot preparation and checked departures retained | [Diesel-assistance state sequence and scenario scope](domain_and_state_machines.md#diesel-assistance-state-sequence-and-scenario-scope-d-032) |
 | D-033 | Agreed: cancellation/revision before service triggers reviewed reassignment, waiting or replenishment; schedule change alone does not cancel | [Request cancellation and revision](domain_and_state_machines.md#request-cancellation-and-revision-d-033) |
-| D-034 | Agreed: started service finishes under original conditions in normal operation; manual cancellation blocked; cancelled-flight aircraft remains parked for a new flight | [Started-service commitment and cancelled flights](domain_and_state_machines.md#started-service-commitment-and-cancelled-flights-d-034); D-035 technical withdrawal is the exception |
+| D-034 | Agreed: running service keeps original conditions; manual interruption blocked; D-035 stops faulty service and D-039 cancels interrupted remainder in its reviewed window | [Started-service commitment and cancelled flights](domain_and_state_machines.md#started-service-commitment-and-cancelled-flights-d-034) |
 | D-035 | Agreed: any detected technical fault stops aircraft work; mobile vehicle returns unavailable in ToDepot and enters Maintenance on arrival; immobile recovery separately scoped | [Fault withdrawal and depot return](domain_and_state_machines.md#fault-withdrawal-and-depot-return-d-035); catalogue selection does not reopen the mechanism |
-| D-036 | Agreed: tanker fault interrupts aircraft Refueling into Alert; replacement resumes Alert to Refueling with retained fuel/need | [Aircraft interrupted service](domain_and_state_machines.md#aircraft-interrupted-service-and-committed-readiness-d-036d-037) |
-| D-037 | Agreed: changed/new flight checks retained fuel at its check window; Ready is irreversible and guarantees departure in the demonstration | [Committed aircraft readiness](domain_and_state_machines.md#aircraft-interrupted-service-and-committed-readiness-d-036d-037); full aircraft review next session |
+| D-036 | Agreed: tanker fault interrupts aircraft Refueling into Alert; replacement resumes only still-valid outstanding service; D-039 cancellation branch applies | [Aircraft interrupted service](domain_and_state_machines.md#aircraft-interrupted-service-and-committed-readiness-d-036d-037) |
+| D-037 | Agreed: current-flight window gates Ready; provider and execution reject reversals; actual departure includes Departing and D-040 late timing | [Committed aircraft readiness](domain_and_state_machines.md#aircraft-interrupted-service-and-committed-readiness-d-036d-037) |
 | D-038 | Agreed: Refueling for aircraft; separate Alert Refueling for diesel rescue; single general Repositioning state; faulty ToDepot unavailable | [Tanker state vocabulary](domain_and_state_machines.md#tanker-states) |
+| D-039 | Agreed: flight cancellation in Alert before replacement arrival cancels the old undelivered obligation; Parked retains fuel; new flight uses its own check | [Interrupted-service cancellation](domain_and_state_machines.md#interrupted-service-cancellation-d-039) |
+| D-040 | Agreed: delay warning in Parked/Refueling/Alert; operator decides ETD changes; schedule, prediction and actual departure remain separate; no past-time deadlock | [Departure delay risk and schedule authority](planning_and_operator_workflow.md#departure-delay-risk-and-schedule-authority-d-040) |
 
 ## Open review register
 
@@ -335,15 +372,15 @@ live in the owning document; this register provides a single continuation index.
 | Q-02 | What defines simulation time, event ordering, replay, resets and the relationship to USD time? | [Architecture](architecture.md#open-questions-and-next-steps) |
 | Q-03 | Which transfer equipment/setup, rates/amounts, exact event timing and records implement D-017/D-032? States, busy-donor waiting, departures and traversable-airfield scope are agreed | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
 | Q-04 | What field boundary, readiness/coverage handover and parking selection/safety rules apply? D-022–D-026 close waiting/replacement behaviour; D-030 closes assignment during Loading movement; Q-02 owns simultaneous-event ordering | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
-| Q-05 | Next session: review the full aircraft scheme using agreed D-034/D-036/D-037, then service completion/identity, check-window overlap and late readiness. Ready commitment is fixed, not an open reversal policy | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
-| Q-06 | Which units, fuel calculation, reserves and fuel-check timing rules are canonical? How are late arrivals and ETD changes handled? | [Fuel model](fuel_and_service_model.md#open-questions-and-next-steps) |
+| Q-05 | Request/commitment IDs, closure/teardown and atomic updates; cancellation after replacement arrival before resumption; replacement without explicit cancellation in Alert; cancellation during service followed later by a fault; fault after full uplift before release. Eight aircraft states/T1–T10 and D-039 are agreed | [Domain](domain_and_state_machines.md#open-questions-and-next-steps) |
+| Q-06 | Which units, calculation, reserves, numerical check lead time and rescheduling after accepted ETD changes are canonical? Immediate checks after late stand arrival are agreed | [Fuel model](fuel_and_service_model.md#open-questions-and-next-steps) |
 | Q-07 | What pump-petrol capacity/consumption/reserve, remaining depot visit/skip rules, holding/movement geometry, auxiliary dispensing sequence, rates/quantities and D-017 calculations apply within the agreed simultaneous-arrival order? | [Fuel model](fuel_and_service_model.md#open-questions-and-next-steps) |
 | Q-08 | What does “serve next” guarantee? What planning horizon and cost/deadline policy govern D-027 assignment/replenishment comparisons, priorities and queue position? | [Planning](planning_and_operator_workflow.md#open-questions-and-next-steps) |
 | Q-09 | Which cuOpt interface/features represent the chosen constraints, and how are infeasible, failed or outdated proposals handled? | [Planning](planning_and_operator_workflow.md#open-questions-and-next-steps) |
 | Q-10 | How are D-028 labels and D-029 fuel-statistics metrics/periods bound and projected alongside units/time formatting, and how is schema v1.0 reconciled/versioned? UI design is later work | [USD contract](usd_presentation_contract.md#open-questions-and-next-steps) |
 | Q-11 | Which equipment variants, operating profiles, destinations, source editions and asset-swap metadata are verified and selected? | [Reference profiles](reference_profiles.md#open-questions-and-next-steps) |
 | Q-12 | Which common EDF/cuOpt fixtures, assignment/horizon policy, concurrent field operation, rotation/recovery cases, complete fleet route/diesel-cost model and deadline/coverage criteria establish benefit on the 3 + 2 + optional 1 schedule? | [Scenarios](scenarios_and_validation.md#open-questions-and-next-steps) |
-| Q-13 | How can the system dispatch automatically, when is operator confirmation required, and how do intervention, overrides and mode switching work? | [Planning](planning_and_operator_workflow.md#operator-acceptance-and-unresolved-result-handling) |
+| Q-13 | Remaining automatic-dispatch, confirmation, override and mode-switching rules; D-040 already requires operator confirmation for ETD changes and D-037 rejects changes after Ready | [Planning](planning_and_operator_workflow.md#operator-acceptance-and-unresolved-result-handling) |
 | Q-14 | Which fault events, mobility/repair evidence and durations may the provider model? What immobile recovery and urgent takeover route are in scope? D-031/D-035 already fix withdrawal and mobile return; field-parking bypass remains open | [Maintenance and fault catalogue](domain_and_state_machines.md#q-14-synthetic-fault-catalogue-and-interrupted-service) |
 
 ## Source coverage and existing contracts

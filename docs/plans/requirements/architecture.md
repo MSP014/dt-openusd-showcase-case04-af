@@ -3,7 +3,7 @@
 **Status:** Working draft; ownership principles agreed in discussion, component
 and event contracts incomplete
 
-**Last updated:** 29 October 2026
+**Last updated:** 30 October 2026
 
 **Primary decision:** D-001
 
@@ -31,6 +31,15 @@ of runtime logistics state through this requirements split.
 
 ## State ownership
 
+D-031/D-035 fix planned-maintenance and detected-fault handling. Q-14 must select
+the provider's concrete fault catalogue, mobility effects, timing and
+reproducibility data; that selection does not block the agreed withdrawal rule.
+Pump failure during aircraft refuelling is only a candidate. The provider emits
+events; WorldState/execution applies reviewed unavailability, transfer stopping,
+assignment and recovery effects. It must not fabricate completed delivery or
+repair, independently rewrite fuel balances or assume all faults immobilise the
+tractor. No fault-event schema or probability model is selected yet.
+
 **D-001 — agreed in discussion:** `WorldState` is the single authoritative source
 of current calculated state. The Synthetic Data Provider supplies initial data
 and events. Simulation rules and the execution policy govern changes. Automatic
@@ -46,7 +55,39 @@ provider merely exposes applied results or whether publication belongs to a
 separate state/replay component. Snapshot names such as `WorldSnapshot` do not
 settle ownership.
 
+D-032/D-038 distinguish Alert waiting, aircraft Refueling and the separate
+Alert Refueling diesel-assistance state.
+WorldState/execution must distinguish fuel type, donor/recipient roles and
+task destination; a shared state name does not imply shared balance updates.
+Assistance scenario locations are traversable, and a busy donor becomes available
+after its current committed work; blocked-road/disaster branches are outside
+this scenario. These contracts do not implement an assistance dispatcher.
+
+D-035 requires immediate service withdrawal and technical unavailability on a
+detected fault. If mobile, use ToDepot with that unavailability/reason retained,
+then Maintenance on actual repair-area arrival. A vehicle unable to move stays
+Alert pending separately scoped recovery; do not simulate an impossible return.
+Normal assignment, final-service commitment and coverage policies cannot keep
+a faulty vehicle working merely to finish a delivery or wait for replacement.
+
 ## Data and command flow
+
+D-036 requires aircraft Alert after service interruption caused by a tanker
+fault, followed by Alert-to-Refueling when replacement service actually begins.
+D-037 constrains synthetic schedules: changed/new flights use their check window
+and actual retained fuel, but once an aircraft enters Ready its flight is no
+longer cancelled/revised and readiness is not revoked; it departs at departure
+time. This is a declared demonstration simplification, not a live-airport
+guarantee. The complete aircraft transition review is the next-session priority.
+
+D-033/D-034 require separate flight, aircraft, request and started-service
+commitment identities. The provider can supply explicit flight cancellation and
+later assign a new flight to the same parked aircraft. Execution preserves the
+original started-service conditions despite withdrawal/cancellation, rejects
+late manual cancellation, and applies actual transfers until completion or an
+adopted disabling fault. Cancellation must not delete the physical aircraft,
+reset its fuel or turn a completed delivery into an unserved request. Concrete
+identity/version/event-ordering formats remain open.
 
 The following view organises the recorded direction; event-application details
 are still open:
@@ -81,6 +122,26 @@ triggers include ETA/ETD changes, new arrivals/diversions, stand readiness,
 completed refuelling and replenishment. A configurable planning interval is an
 option, not an agreed numerical setting. Do not infer a solver call per render
 frame. Replanning and commitment rules live in the [planning document](planning_and_operator_workflow.md#replanning-and-committed-actions).
+
+D-024 requires waiting/allocation reassessment on every arrival/departure
+schedule addition or change, expected fuel-check-window opening and the Staging
+Point dwell-threshold crossing. A check that creates no request triggers a new
+one-hour look-ahead. D-025/D-027 first review assignments for known demand;
+a selected replenishment plan can trigger proactive depot return
+and actual Standby dispatch to field parking under D-026, without waiting for an
+aircraft-service request. Physical coverage must remain at least one ready
+refueller on the field. Replacement parking arrival precedes aircraft dispatch;
+future schedule knowledge remains distinct from an executable service request.
+These are required event semantics,
+not an implementation or a selected event-processing API; same-time ordering
+remains open under Q-02.
+
+D-027 requires the planning layer to compare joint aircraft assignments, service
+order and replenishment timing for the two-vehicle fleet. Both refuellers may
+remain on the field; depot Standby is a default arrangement rather than a fixed
+one-vehicle limit. A candidate's fuel infeasibility must not directly force a
+depot-return command before assignment review. Evaluate route/diesel cost and
+service outcomes against EDF using equivalent constraints and information.
 
 ## Configuration and logical interfaces
 

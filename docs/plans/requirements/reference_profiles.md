@@ -4,7 +4,7 @@
 claims retained; autonomous pump drive corroborated, exact early variant and
 numerical parameters still require verification
 
-**Last updated:** 29 October 2026
+**Last updated:** 30 October 2026
 
 **Primary decision:** D-008
 
@@ -103,7 +103,7 @@ JSON keys or implemented classes.
 | --- | --- |
 | Aircraft operation | Fuel/performance category, tank/usable capacity, demand parameters, fuel type and applicable service constraints |
 | Tractor/semi-trailer/pump | Separate aviation-fuel, tractor-diesel and pump-petrol stocks/capacities; consumption, reserves, delivery rates, service durations, dimensions and manoeuvring limits |
-| Airfield | Two depot posts without occupancy queues, separate parking for two refuellers, stand/waiting nodes, reachable graph, internal/departure paths, travel times and clearances |
+| Airfield | Two exclusive-occupancy posts with the agreed simultaneous-arrival sequence, separate auxiliary dispensers, depot parking for two refuellers, field boundary and replacement parking, stand/waiting nodes, reachable graph, handover/internal/holding paths, times and clearances |
 | Planning rules | Reserve framework, time/priority policy, objective weights and documented assumptions |
 | Visual binding | Logical ID to USD asset/prim association and the required spatial/service interface metadata |
 

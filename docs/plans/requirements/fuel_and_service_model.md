@@ -3,11 +3,11 @@
 **Status:** Working draft; three refueller stocks and depot operations agreed in
 discussion; units, consumption profiles, rates and numerical parameters open
 
-**Last updated:** 29 October 2026
+**Last updated:** 30 October 2026
 
 **Primary decisions:** D-004, D-005, D-021; depot transitions D-018–D-020
 
-**Review questions:** Q-06, Q-07; transition dependency Q-03; profiles Q-11
+**Review questions:** Q-06, Q-07; assistance implementation Q-03; profiles Q-11
 
 This document owns resource quantities and feasibility rules. Lifecycle triggers
 belong to [domain and state machines](domain_and_state_machines.md); equipment
@@ -64,9 +64,11 @@ after aircraft service and active/standby relief. Pump petrol cannot be treated
 as free merely because the tractor has diesel. Numeric pump capacity, petrol
 capacity, engine consumption, usable stock and reserve remain open under Q-06/Q-07.
 
-Petrol replenishment takes place at the **Diesel Refueling** post, with its own
-balance and duration; co-location does not combine the fuels or establish
-simultaneous dispensing. The exact diesel/petrol service sequence remains open.
+Petrol replenishment takes place at the **Diesel/Petrol Refueling** post
+(previously **Diesel Refueling**). It provides diesel and petrol through
+**separate dispensers**. Petrol retains its own balance and duration; co-location
+does not combine the fuels or establish simultaneous dispensing. The exact
+diesel/petrol service sequence within this post remains open.
 An assigned departure may use partial stocks if all guards pass (D-020).
 Standby readiness retains the fully replenished condition for all three stocks.
 
@@ -124,11 +126,21 @@ travel distance, loading time or service constraints.
 
 Under [D-018–D-020](domain_and_state_machines.md#depot-loading-and-departure),
 the depot has an aviation-fuel loading post, a diesel/petrol replenishment post
-and separate parking for two refuellers. Required post visits are sequential;
-internal travel and replenishment consume time inside `Loading`. Both posts
-are always available without occupancy queues, even for concurrent depot visits
-by the two vehicles. This does not remove the duration of either vehicle's work.
-Exact paths, visit order, rates and target quantities remain to be selected.
+and separate parking for two refuellers. Each vehicle's required post visits
+are sequential; different posts can serve the two vehicles concurrently. A post
+can hold only one vehicle. For simultaneous arrivals, the first uses aviation
+loading and the second uses diesel/petrol. After the first completes all required
+replenishment and departs for an assigned aircraft or proceeds to parking, the
+second moves to the vacated aviation post. Any required auxiliary visit by the
+first must also respect release of that post by the second.
+
+This agreed sequence replaces the blanket no-post-occupancy-queues assumption.
+No additional external queue is modelled, but actual replenishment, post
+clearance, movement and necessary coordination waits consume time in `Loading`.
+Do not assume equal service durations, overlapping occupancy or instantaneous
+swaps. Exact paths/holding positions, first/second tie-breaking, other visit/skip
+rules, rates and target quantities remain to be selected; the specified
+simultaneous-arrival order is agreed.
 
 Proposed conservation requirements from the architecture note:
 
@@ -148,7 +160,15 @@ The **D-016 duty-rotation agreement**, extended by D-018–D-021, replenishes th
 three stocks as required by the next assignment or the fully replenished Standby
 condition. The facilities are defined conceptually; rates, supply quantities and
 numerical reserve calculations remain open. Unlimited aviation-fuel supply
-(D-004) and queue-free posts do **not** establish unlimited diesel or petrol stock.
+(D-004) and operational depot posts do **not** establish unlimited diesel or petrol stock.
+
+[D-015 / transition 4](domain_and_state_machines.md#transition-4-refueling-to-todepot)
+first requires D-027 assignment review when **any** of the three stocks is
+insufficient for a candidate, including mixed shortages. A feasible alternative
+can keep the vehicle on the field. Use the depot-return branch if no alternative
+is selected or replenishment is chosen by the reviewed fleet plan. Insufficient
+diesel for the original assignment can coexist with sufficient diesel for the
+shorter protected return. Numerical guard calculations remain open.
 
 The [D-017 diesel-return and assistance requirement](domain_and_state_machines.md#diesel-reserve-and-exceptional-assistance-d-017)
 requires normal checks to preserve a feasible return to the depot with reserve.
@@ -158,6 +178,21 @@ and check tank headroom, donor approach and the donor's remaining return reserve
 Record donor/recipient balances, elapsed transfer time and any modelled
 consumption explicitly. Diesel assistance does not transfer aviation fuel or
 create an unaccounted fuel supply. Equipment and numerical parameters remain open.
+
+D-032/D-038 use Alert Refueling for both donor and recipient during tractor-diesel
+assistance. The operation type identifies the fuel and participant roles;
+do not apply aircraft uplift or pump-petrol consumption merely because this
+state is active. After transfer the recipient must return to depot. Recheck
+the donor's actual aviation fuel, tractor diesel and pump petrol before its
+next assignment/waiting/replenishment decision. If post-work diesel cannot cover
+approach, the donation needed for the recipient's protected return and the
+donor's own protected return, first use the donor's remaining diesel to reach
+depot under its existing return guard. Replenish both tractor diesel and trailer
+aviation fuel there, independently checking/top-up of pump petrol under D-021.
+Repeat assistance checks after timed depot operations, then travel to the
+recipient while it remains Alert. The scenario
+assumes traversable assistance routes; busy status is handled by waiting,
+without removing approach/donation/protected-return checks.
 
 ## Ground travel and service feasibility
 
@@ -169,6 +204,25 @@ The physical module is intended to output uplift demands, travel/service-time
 estimates, resource/capacity constraints, depot needs and feasibility diagnostics.
 Validate these constraints independently of the solver objective or returned
 route. Report infeasible/unserved demand explicitly.
+
+D-023's assignment during `Repositioning` uses the vehicle's actual current
+position and remaining stocks, including diesel already spent while moving
+towards a waiting location. Check the replacement route, service and protected
+return rather than reusing estimates from the previous stand or destination.
+Under D-025/D-027, known upcoming demand first triggers assignment review;
+selected replenishment can then start from `Idle` or `Repositioning` before an
+aircraft-service assignment exists. The 10-tonne stock
+versus 12-tonne uplift example is a synthetic mass fixture: apply the adopted
+units/density profile and verify the full Standby's capacity and all resource
+guards. Do not mix tonnes and litres or assume full tanks guarantee a job fits.
+
+D-026 replacement feasibility includes the depot-to-field-parking leg and the
+subsequent aircraft route/service/protected return when assigned. Full depot
+stocks do not erase travel consumption. Replacement-to-parking dispatch does
+not require an aircraft request/window; aircraft-bound departure from parking
+does. Resource readiness, actual field presence and service assignment are
+separate checks. Define numeric readiness/reserve criteria and handover timing
+without counting a depot vehicle as physical field coverage.
 
 A single job exceeding a full tanker load needs an agreed partial-delivery or
 multiple-visit rule; otherwise report it as infeasible. Never silently truncate
@@ -193,11 +247,39 @@ time model remains to be selected.
 
 ## Open questions and next steps
 
-- **Q-03 dependency:** Quantify resource guards for the agreed D-015
-  aviation-fuel-only return and D-017 diesel assistance. Review the remaining
-  diesel-only, pump-petrol-only and mixed-shortage return transitions, recovery
-  lifecycle and donor failure cases separately; assistance is required, its
-  detailed rules remain open.
+D-036 preserves actual aircraft fuel and outstanding need during an interrupted
+delivery in aircraft Alert; a replacement resumes service from those quantities.
+D-037 uses retained onboard fuel at the changed/new flight's check window to
+determine Ready or additional demand while Parked. No synthetic event may revoke
+Ready after it has been granted; the demonstration assumes departure readiness
+then remains valid. Check-window/service overlap and late readiness are queued
+for the next aircraft review, not silently assigned timing rules here.
+
+D-034 retains the agreed delivery quantity/conditions when aircraft service
+starts. Later cancellation/revision does not reduce or rewrite that active
+commitment. Account for actual transferred fuel even when the flight is cancelled;
+finish the committed service in normal operation; D-035 detected-fault withdrawal
+stops aircraft service regardless of whether some equipment remains functional.
+The fuelled aircraft remains physically parked. A new flight uses the same
+aircraft's actual stock and its own required departure fuel; do not reset fuel
+or repeat the original delivery. Remaining completion/final-check sequencing is
+Q-05. D-033 cancellation before service removes pending demand without inventing
+a delivery or undoing prior physical transfers.
+
+D-031/D-035 fault handling must preserve actual balances and cumulative
+delivery at the event time. If the Q-14 pump-failure candidate is adopted, stop
+further aviation-fuel transfer when pumping capability is lost; do not credit
+the aircraft with the original full request or reset either vehicle's stocks.
+The replacement serves the reviewed remaining deficit from actual aircraft fuel
+and current requirements. Define any fuel consumption during failure/return,
+partial-service accounting and repair duration explicitly; maintenance completion
+is not replenishment. Pump failure does not itself prove loss of tractor mobility.
+
+- **Q-03 dependency:** Detail D-017/D-032 equipment/setup, rate/amount calculations,
+  event timing and records; the assistance state sequence and busy-donor waiting
+  are agreed. D-015's return branch for any single-stock or
+  mixed shortage follows D-027 assignment review. Quantify its guards under Q-06/Q-07 without
+  reopening that behaviour or weakening the protected-return invariant.
 - **Q-06:** Choose canonical units, density, capacities, tolerances and the
   usable-fuel definition. Select the departure-fuel calculation and reserve
   framework, and reconcile fuel-check timing with ETD changes and late arrivals.
@@ -206,7 +288,9 @@ time model remains to be selected.
   loading rates and setup/completion durations. Define tractor-to-tractor
   transfer equipment/rate, quantity calculation and donor/recipient constraints.
   Specify pump-petrol capacity/consumption/reserve, rates for all three stocks,
-  post visit/skip order and diesel/petrol sequencing at the auxiliary post.
+  remaining post visit/skip rules, first/second tie-breaking, safe holding and
+  movement geometry, and diesel/petrol dispensing sequence within the auxiliary
+  post. Preserve D-018's agreed simultaneous-arrival order and separate dispensers.
 - **Q-11 dependency:** Verify equipment variant and profile applicability before
   promoting candidate reference values to approved model parameters.
 

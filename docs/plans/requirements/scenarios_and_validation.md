@@ -3,14 +3,15 @@
 **Status:** Working draft; 3 + 2 + optional 1 schedule and two-refueller rotation
 recorded; depot transitions, three-stock guards, waiting/event-driven reassessment
 and in-motion assignment recorded; exceptional diesel assistance required;
-EDF benchmark specified; numerical fixtures open
+EDF benchmark and D-046 library prototype specified; D-042 profile adopted,
+complete timed fixtures and platform validation open
 
-**Last updated:** 31 October 2026
+**Last updated:** 1 November 2026
 
 **Primary decisions:** D-009, D-016, D-017, D-018–D-040;
 D-006 schedule clarified on 29 October 2026; resource branch D-015
 
-**Review question:** Q-12; dependencies Q-02, Q-05–Q-09, Q-11, Q-13
+**Review question:** Q-12; dependencies Q-02, Q-05–Q-09, Q-11, Q-13, Q-15
 
 These are proposed demonstration and validation cases, not executed tests or
 evidence of an implemented solver/state workflow. Read the [requirements index](README.md)
@@ -147,7 +148,8 @@ Yerevan specifically to refuel and then continue its flight.
 - Supply ETA, ETD, next landing airport from the configured destination set,
   arrival fuel and the calculated requirement for that next leg.
 - Check fuel after arrival and actual service readiness. If short, create a
-  request; actual refuelling and a sufficient final check precede `Ready`.
+  request; full agreed delivery and D-041 completion accounting precede Ready for an
+  unchanged flight; changed/new flights retain D-037 guards.
 - For a short transit whose check time passed before arrival, check immediately
   after the aircraft reaches its stand and stops (T2), under
   [D-007](domain_and_state_machines.md#fuel-check-and-request-lifecycle).
@@ -156,8 +158,8 @@ Yerevan specifically to refuel and then continue its flight.
 
 ## Illustrative replenishment cases
 
-The original proposal uses a candidate **22,000 L** tanker capacity, subject to
-exact-variant verification in [reference profiles](reference_profiles.md#equipment-evidence-register).
+D-042 adopts **22,000 L** as the simulation tank capacity; historical
+exact-variant verification remains in [reference profiles](reference_profiles.md#equipment-evidence-register).
 The figures below are synthetic input examples, not verified requirements of
 specific aircraft or complete route-feasibility proofs.
 
@@ -183,43 +185,43 @@ See [resource accounting](fuel_and_service_model.md#depot-and-resource-accountin
 
 ## Depot operations and three-stock checks
 
-Validate [transitions 5–7](domain_and_state_machines.md#depot-loading-and-departure)
-and [D-021](fuel_and_service_model.md#three-refueller-fuel-stocks-d-021) with
-explicit, reproducible inputs once numerical profiles are selected:
+Use D-042's [adopted profile](reference_profiles.md#adopted-simulation-profile-d-042)
+and D-043's [depot transitions](domain_and_state_machines.md#depot-loading-and-departure).
+These are required checks for future fixtures, not executed runtime tests.
 
 | Case | Required behaviour |
 | --- | --- |
-| Arrival at depot | Enter `Loading` automatically; no stock is refilled at the instant of arrival |
-| Multiple required post visits | Replenish sequentially with elapsed service and travel time; remain `Loading` between posts |
-| Aviation-fuel-only replenishment for an assignment | Skip unnecessary replenishment when diesel and pump petrol already cover the job and reserves; full tanks are not an assigned-departure prerequisite |
-| Valid assignment after replenishment | Independently check all three stocks and depart `Loading -> ToAircraft` without an intermediate `Idle` |
-| Assignment during movement to depot parking (D-030) | After completed replenishment, validate all three fuels and route/readiness/time from actual position; immediately redirect Loading to ToAircraft without parking arrival, stop or Idle; preserve elapsed travel and fuel use |
-| Assignment during parking movement with a failed guard or incomplete replenishment | Do not dispatch to the aircraft; D-030 does not waive any required operation or feasibility guard |
-| Insufficient pump petrol | Remain `Loading` for necessary replenishment and repeat checks, even when aviation fuel and diesel are sufficient |
-| No assigned request | Complete required Standby replenishment, travel to depot parking while `Loading`, then enter `Idle` on actual arrival |
-| Simultaneous arrival | First vehicle uses aviation loading; second uses the diesel/petrol post with separate dispensers; each post holds only one vehicle |
-| First vehicle completes replenishment | Complete any necessary auxiliary visit after that post is released; depart for an assigned aircraft only if all three guards pass, otherwise proceed to parking under transition 6 |
-| Second vehicle continues replenishment | After the first completes required replenishment and departs or proceeds to parking, move to the vacated aviation post and load its semi-trailer |
-| Unequal post durations | Run both auxiliary-faster and aviation-faster fixtures; account for post clearance, movement and any required coordination wait in Loading; never overlap vehicle occupancy at a post or assume an instantaneous swap |
-| Any aircraft-service assignment path | Apply all three guards to `Idle -> ToAircraft`, direct post-service continuation, standby relief and depot departure |
+| Depot arrival | Select the required post/repair destination; no instantaneous fill; enter RefillTank/RefillServiceFuel only at the actual available post |
+| Multiple required visits | Sequential timed replenishment with Repositioning between posts; preserve unfinished operations and task |
+| Assignment needs only aviation fuel | Skip unnecessary auxiliary visit when diesel/petrol already cover work/reserves |
+| Completed replenishment and valid assignment | Release equipment and depart directly ToAircraft with all guards; no parking/Standby requirement |
+| Assignment during depot parking movement (D-030) | After required operations, redirect Repositioning -> ToAircraft from actual position without parking arrival/stop/Standby |
+| Failed guard or unfinished depot operation | Do not dispatch merely because a request appeared or the state is Repositioning |
+| No assigned task | Fill all three stocks to 100%, complete readiness, move to reserve parking and enter Standby only on arrival/stop |
+| Depot internal movement | Preserve elapsed time/position/distance; debit zero diesel by D-042 simplification |
+| Field waiting arrival | Enter Idle, not tanker Parked or depot Standby |
+| Simultaneous arrivals | First to aviation, second to auxiliary; one vehicle per post; preserve first completion/departure-or-parking before second aviation visit |
+| Unequal post durations | Account for post clearance, holding and movement; no overlapping occupancy or instantaneous swaps |
+| Partial-stock assigned departure | Allowed when all guards pass; must not be labelled full-ready Standby |
+| Repair completed | No stock reset; replenish as required, or feasible direct assignment; no-task reserve readiness requires all stocks full and parking arrival |
 
-Record balances independently: aviation-fuel delivery does not consume the
-tractor's diesel or reset pump petrol; movement consumes the adopted tractor
-fuel model; pumping consumes its separate petrol-engine model. Replenishing one
-stock must not refill another implicitly. Missing capacity/rate/reserve inputs
-remain unknown rather than inventing a successful guard result.
+Record aviation fuel, diesel and petrol separately. Pumping consumes petrol,
+not diesel; other counted travel uses 0.401 L/km, while internal depot travel
+uses zero diesel. Depot loading equipment/petrol use and additional setup/idle
+allowances remain open. A fill of one stock never resets the other two.
+Preserve separate dispensers and D-018's coordination sequence; exact rates,
+auxiliary dispensing order, tie-breaking and holding geometry remain Q-07.
 
-The earlier blanket no-post-queues assumption is replaced by this coordinated
-two-vehicle sequence; no additional external queue is modelled. For each post,
-the next vehicle's occupancy may begin only after its predecessor clears it;
-the second vehicle's aviation visit also follows the agreed first-vehicle
-completion/departure-or-parking step. Verify arrival/departure times and stock
-changes separately rather than treating post availability as an instant refill.
+### Adopted-profile arithmetic checks
 
-D-030 agrees assignment during movement to depot parking. First/second tie-breaking,
-safe holding/movement geometry and auxiliary diesel/petrol dispensing sequence
-remain open under Q-02/Q-04/Q-07. These details do not reopen the agreed
-simultaneous-arrival order or D-015's return behaviour.
+Check 41.25 L diesel and 11.25 L petrol protected reserves. A pure 22,000 L
+transfer takes 22 minutes and 5.5 L petrol, before additional service time or any
+separately selected extra engine use. Compare before/after balances; an otherwise
+identical road leg adds 0.401 L diesel per km, while internal depot movement
+adds elapsed time without changing diesel. Include just-sufficient and below-
+reserve assignments using a declared numerical tolerance; guards use exact
+quantities rather than rounded analogue indications. No measured equipment
+performance is established by these arithmetic checks.
 
 ## Transition 4: all fuel-shortage returns
 
@@ -235,9 +237,8 @@ an unconditional return.
 
 For the normal diesel-insufficient-for-assignment fixture, retain enough diesel
 for the protected depot return. Separately, inject an unexpected failure of that
-return condition and exercise D-017 assistance before travel. The behaviour is
-agreed; numerical inputs and detailed recovery traces still need the Q-03/Q-07
-implementation contract. Do not interpret a diesel shortage for the next job as
+return condition and exercise D-017 assistance before travel. The behaviour and D-042 base profile are agreed; transfer equipment/rates
+and detailed recovery traces still need the Q-03/Q-07 contract. Do not interpret a diesel shortage for the next job as
 permission to drive with insufficient diesel for the depot.
 
 ## Waiting, in-motion assignment and schedule events
@@ -268,8 +269,9 @@ Declare mass/volume units and any density conversion for the 10/12-tonne fixture
 The returning vehicle's travel and depot service take time and consume resources;
 neither vehicle teleports or gains fuel through reassignment. Fix same-time
 schedule/arrival/assignment event ordering under Q-02 before executable traces
-are finalised. D-030 closes assignment during Loading movement to depot parking;
-D-031/D-035 fix Maintenance/fault withdrawal; Q-14 selects events and parameters.
+are finalised. D-030/D-043 retain assignment during parking-bound Repositioning
+after depot operations. D-031/D-035 fix Maintenance/fault withdrawal; D-044 selects
+events while Q-14 retains exact timing, repair evidence and recovery detail.
 Keep D-026's replacement field-parking
 arrival distinct from the depot parking that D-030 allows bypassing.
 
@@ -293,8 +295,9 @@ service deadlines/coverage, depot visits and operation durations, including the
 second vehicle's field-parking leg and each later depot return. Keep pump petrol
 and delivered aviation fuel separate. The objective is fleet operating-cost
 reduction through joint assignment, service order and replenishment decisions;
-measure the result against EDF and report ties or regressions. Numerical fixture
-profiles, planning horizon, objective policy and thresholds still need selection.
+measure the result against EDF and report ties or regressions. Use D-042's
+refueller profile and D-045's one/two-request horizon; aircraft/route fixtures,
+request selection, objective policy and pass/fail thresholds still need definition.
 
 ## Fault tolerance and exceptional diesel assistance
 
@@ -324,10 +327,10 @@ requires the following behaviour to be validated once its detailed contract exis
   recipient continues waiting in Alert until it can approach and donate.
 - **Donor depot preparation:** After current work, make approach/donation/both
   protected returns exceed the donor's remaining diesel while its own depot
-  trip remains feasible. Expect ToDepot, timed Loading of tractor diesel and
+  trip remains feasible. Expect ToDepot, timed D-043 replenishment of tractor diesel and
   trailer aviation fuel, independent pump-petrol check/top-up, then direct
-  Loading to Repositioning for assistance after repeated checks. The recipient
-  stays Alert throughout; no parking/Idle detour or intervening aircraft job.
+  Repositioning to the recipient after completed operations and repeated checks.
+  The recipient stays Alert; no parking/Standby detour or intervening aircraft job.
 - **Scope:** Assistance locations are reachable over the modelled traversable
   airfield network. Do not add blocked-road/destruction scenarios. Concurrent
   technical faults remain Q-14, not an implicit D-017 impossibility branch.
@@ -368,28 +371,29 @@ zero. This defines future data validation; panel/UI design is deferred.
 
 ## Maintenance and technical-fault scenarios (D-031/D-035)
 
-The [Maintenance framework](domain_and_state_machines.md#maintenance-framework-and-fault-catalogue-d-031)
-and [fault withdrawal](domain_and_state_machines.md#fault-withdrawal-and-depot-return-d-035)
-are agreed. Concrete event types and numeric fixtures remain a review queue,
-not an implemented catalogue or evidence of recovery implementation:
+D-044's [selected catalogue](domain_and_state_machines.md#q-14-selected-fault-catalogue-and-interrupted-service-d-044)
+defines the adopted event types. Timed fixtures, repair evidence and runtime
+validation are still pending.
 
-| Candidate check | Intended evidence once the applicable contract is agreed |
+| Check | Required evidence |
 | --- | --- |
-| Planned withdrawal | Stop new assignments, complete current service, coordinate field coverage, use actual travel and enter Maintenance on arrival at the proposed depot maintenance area |
-| Any detected technical fault | Stop aircraft work immediately, preserve actual partial delivery/time/stocks and mark unavailable even when some equipment still functions; if mobile use ToDepot then Maintenance on actual arrival |
-| Completion without implicit refill | Require repair-complete/readiness evidence; use actual stocks and the appropriate Loading, ToAircraft or Idle exit; coverage replacement still follows D-026 |
-| Candidate pump failure during Refueling | Apply the same D-035 withdrawal rule; retain outstanding demand and send the mobile vehicle unavailable to depot for Maintenance after shutdown/release and fuel checks |
-| Fault preventing movement, if selected | Retain Alert/unavailability at actual location; define recovery separately rather than simulate a return journey or assume towing |
-| Candidate urgent takeover | Compare actual feasible replacement travel and readiness, including a second vehicle already on field or committed to another service; agree any direct-route exception to D-026 before fixing the expected trace |
-| Missing replacement or coverage loss | Expose the unmet service/recovery need and actual coverage gap rather than inventing another ready vehicle or continuing impossible pumping |
+| Planned withdrawal | Finish current service, coordinate coverage, travel to repair area and enter Maintenance on arrival |
+| Tyre puncture in Repositioning | Preserve the selected mobility assumption, expose unavailability, replan actual task and return ToDepot for wheel replacement; do not extend event to other motion states |
+| Pump failure during Refueling | Stop transfer immediately; aircraft Alert, original request/remainder retained; mobile vehicle returns unavailable for Maintenance |
+| Pump-petrol exhaustion during Refueling | Same interruption/remainder preservation; return for replenishment, not pump repair; normal assignment guards must prevent the shortage |
+| Replacement arrival versus service start | Resume aircraft Refueling only after actual arrival plus checks/setup/start; transfer only valid remainder |
+| Service-time diesel exhaustion | Not generated: tractor engine off and diesel use zero; obsolete continue-service donor branches excluded |
+| Exceptional protected-return diesel deficit | Retain D-017/D-032 assistance separately; do not infer its removal or approve additional movement-exhaustion events |
+| Repair without implicit refill | Use actual stocks and D-043 post/assignment/Standby outcomes; repair alone does not fill tanks |
+| Urgent takeover | Validate actual location, stocks, commitments and travel; any field-parking bypass remains open |
+| Missing replacement/coverage loss | Report unmet service and actual gap; do not invent another ready vehicle |
 
-Q-14 must choose the synthetic event catalogue, mobility effects, repair evidence
-and durations, and any immobile recovery/urgent takeover exception. D-035 already
-fixes withdrawal and mobile return; catalogue selection does not reopen them. Bind
-selected events to reproducible scenario inputs and preserve consistent tanker,
-aircraft/request and D-029 fuel-statistics accounting. Model no fault frequency,
-mechanical failure process, towing or pump-failure scenario as approved merely
-because the framework has been recorded.
+The original request and every physical transfer remain in history through
+interruptions and executor changes. Apply D-039 cancellation before replacement
+arrival; stale resumed-service commands cannot revive the cancelled remainder.
+Select concrete durations later, with pump repair longer than ordinary petrol
+replenishment in the chosen qualitative profile. No probabilities, towing or
+additional immobile technical-recovery model are adopted.
 
 ## Request cancellation, revision and committed service (D-033/D-034)
 
@@ -417,8 +421,9 @@ pre-service cancellation removes pending demand, ongoing committed delivery
 remains current work, and actual issued fuel is retained after flight cancellation.
 D-039 cancellation after interruption removes only the outstanding obligation
 from pending work; it neither reverses issued fuel nor marks the remainder delivered.
-Simultaneous start/cancellation ordering, full request enums and final-check
-closure remain Q-02/Q-05; this section records future validation, not test results.
+Simultaneous start/cancellation ordering, remaining request enums and release/
+identity boundaries remain Q-02/Q-05. D-041 fixes normal completion; this section
+records future validation, not test results.
 
 ## Aircraft Alert, Ready commitment and state vocabulary (D-036–D-038)
 
@@ -459,7 +464,7 @@ validation requirements, not executed tests or implemented behaviour:
 | ETD 14:00, actual readiness 14:10 | Preserve scheduled 14:00 unless changed by the operator; continue actual departure without waiting for 14:00, backdating or hiding lateness |
 
 Use identical revealed events, operator actions and time-measurement conventions
-for EDF/cuOpt. Final-check/request closure, simultaneous cancellation/resumption
+for EDF/cuOpt. D-041 fixes normal completion; remaining release/identity boundaries and simultaneous cancellation/resumption
 ordering, cancellation after replacement arrival but before service, flight
 replacement without explicit cancellation while Alert, cancellation during
 running service followed later by a fault, and exact ETD/actual
@@ -470,7 +475,7 @@ measurement points remain open. Do not invent their expected outcomes as tests.
 | Area | Intended evidence | Still to define |
 | --- | --- | --- |
 | Repeatability | Same scenario ID, seed, configuration and accepted-action sequence reproduce events, demands and expected behaviour | Event/time contract, replay format and solver determinism limits |
-| Conservation | Consistent aircraft/tanker aviation-fuel transfers; explicit depot reloads; independent tractor diesel and pump petrol; conserved diesel assistance | Units, density, tolerances, three-stock rates/reserves and operating-mode assumptions |
+| Conservation | Consistent aircraft/tanker aviation-fuel transfers; explicit depot reloads; independent tractor diesel and pump petrol; conserved diesel assistance | Aircraft units/density, tolerances, depot/setup rates and remaining operating-mode assumptions; D-042 inputs adopted |
 | State integrity | No negative/over-capacity stock, service before readiness or after departure, or teleportation on replanning | Complete lifecycle/transition guards and failure outcomes |
 | Replanning trace | Original plan, trigger, revised priorities, proposal, feasibility, active mode and automatic/operator authorisation | Result IDs/revisions, mode rules and stale-result handling |
 | Measurable comparison | EDF versus cuOpt: coverage/lateness, distance/travel time, estimated diesel/cost, depot visits, delivered aviation fuel and calculation overhead | Common fixtures, EDF rules, fuel-cost assumptions, objective weights and numerical thresholds |
@@ -481,6 +486,67 @@ authorisation and actual execution. Do not fill an operational
 data gap from a historical model name. Keep planned, accepted and executed
 outcomes distinguishable in the replay and presentation.
 
+## Normal completion, history and bounded planning checks
+
+D-041 requires a normal unchanged-flight trace: initial check, calculated deficit,
+assignment, actual balanced transfers, full agreed delivery, Completed and Ready.
+No second same-flight demand calculation occurs. Keep equipment release and
+aircraft movement guards separate; partial delivery cannot close Completed.
+The tanker may directly serve another feasible aircraft, wait via Repositioning
+then Idle, or use selected depot replenishment. Archive completed/cancelled
+requests and interruptions/executor changes; no automatic duplicate request.
+
+D-045 requires fixtures with one and two selected known requests plus a larger
+known queue. Retain excluded-from-solve requests/deadlines, use the same reveal
+and selection rules for EDF/cuOpt, and prohibit access to hidden future events.
+Known schedule windows still drive D-024 waiting and D-026 request-independent
+coverage. Fix the nearest/selection/spillover policy before executing these
+fixtures; do not assume a solver benefit at this horizon.
+
+## Library-integration proof (D-046)
+
+The [agreed runtime direction](architecture.md#standalone-omniverse-library-direction-d-046)
+requires a small project-specific integration prototype before final stack
+adoption. `ovstage` and `ovrtx` are candidates, not installed/validated
+dependencies. These criteria specify future evidence, not completed checks.
+
+| Check | Required observable evidence |
+| --- | --- |
+| Platform bring-up | Record actual SDK/package versions, Windows, Python, GPU and driver, setup steps and compatibility outcome. Run the library path from our host rather than a Kit application. |
+| Real project content | Load a real Houdini-exported project USD asset and render it through the candidate library. Prefer a TZ-22 when available; another actual project asset can isolate the first check. Retain asset identity, input and output. |
+| Host-owned updates | Move a visible object from application-owned state and time. Pair a state/update trace with rendered output; exercise fuel-state projection as its mapping becomes available without claiming an unfinished gauge/HUD. |
+| Repeatable lifecycle | Initialise, step, pause, reset and shut down, then repeat the cycle. Show the expected initial scene/state and absence of stale handlers or updates; record failures and cleanup limits. |
+| Presentation scope and cost | Record render/update timing and assess materials, camera/viewport interaction, route display, labels, HUD and operator-command work still needed. Declare what the prototype actually demonstrates. |
+
+Do not require a new UI framework merely to obtain the first rendered frame.
+Do assess the eventual operator workflow before adopting the stack. Importing
+`usd-core`, calling cuOpt, opening a vendor sample or running Kit headlessly
+does not independently satisfy the project-specific library-integration proof.
+Additional physics libraries require a justified physical-simulation task.
+
+A renderer prototype does not validate logistics, the full fleet scenario,
+EDF/cuOpt benefit or solver determinism. Record its outcome under Q-15, preserve
+Q-02/Q-10/Q-13's open contracts, then prepare the platform ADR and align the root
+README/dependency baseline before claiming an adopted or working runtime.
+
+## Source boundary and synthetic position checks (D-047)
+
+Check the [input-source seam](architecture.md#input-sources-and-synthetic-position-telemetry-d-047)
+when implementing the provider and presentation adapters:
+
+- The synthetic provider conforms to the normalised input contract; consumers
+  do not depend on generator-specific packet fields.
+- Future real-data adapter interfaces/placeholders are identifiable, while no
+  real airport bridge, live connection or recorded GPS feed is claimed.
+- Synthetic GPS-like samples and simulated movement describe the same entity,
+  time and location. Applying input does not duplicate travel or fuel changes.
+- The declared coordinate mapping locates vehicles, aircraft and infrastructure
+  consistently in the ground graph and Y-up/metre scene.
+
+These are future contract checks, not evidence that an adapter or geolocation
+implementation already exists. Representation and event application still need
+their agreed field/time/spatial contracts.
+
 ## Open questions and next steps
 
 - **Q-12:** Freeze the 3 + 2 + optional 1 demonstration fixture with two
@@ -490,9 +556,9 @@ outcomes distinguishable in the replay and presentation.
 - Define D-017/D-032 prevention, busy-donor waiting, fuel preparation, typed
   transfer and donor/recipient departure fixtures as equipment/rates/records
   are specified; respect the traversable-airfield scenario scope.
-- Review Q-14's concrete fault catalogue and D-031/D-035 scenario parameters,
-  especially in-service pump failure, partial demand, failed-vehicle mobility
-  and the urgent replacement route, before adopting failure fixtures.
+- Parameterise D-044's selected fault/shortage cases, actual partial demand and
+  repair-completion evidence; resolve the urgent replacement route before fixing
+  its expected trace. Do not reintroduce excluded service-time diesel exhaustion.
 - Specify D-022–D-025 waiting/assignment/relief fixtures, including the strict
   one-hour dwell boundary, one-hour look-ahead, schedule change, no-request
   fuel check, actual-position rerouting and known-demand proactive return.
@@ -501,7 +567,7 @@ outcomes distinguishable in the replay and presentation.
   fixtures. Keep handover coverage distinct from aircraft-service eligibility.
 - Specify D-027 alternative-assignment, concurrent two-vehicle field operation
   and complete-fleet-cost fixtures, with both beneficial and unfavourable smaller
-  jobs; fix the EDF comparison policy and horizon before measuring savings.
+  jobs; fix EDF comparison and D-045 selection rules before measuring savings.
 - Fix D-018–D-021 depot/three-stock fixture values and expected traces, including
   independent pump-petrol failure, timed internal movement, partial-stock direct
   departure and the agreed simultaneous-arrival sequence with exclusive post
@@ -513,6 +579,8 @@ outcomes distinguishable in the replay and presentation.
   isolated checks, keeping the demonstration schedule intact.
 - **Q-13 dependency:** Define the execution mode and operator-intervention rules
   so dispatch behaviour and approval delays are comparable between planners.
+- **Q-15 dependency:** Evaluate the D-046 prototype and retain its environment,
+  outputs, lifecycle trace and presentation limitations before final stack adoption.
 - Review missing-data and infeasible-demand cases, conservation, current-service
   preservation and proposal rejection/outdated results alongside success cases.
 - Verify behaviour and presentation separately; later tests or viewport checks

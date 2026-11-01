@@ -1,13 +1,14 @@
 # Fuel Logistics — USD Presentation Contract
 
 **Status:** Working draft; one-way projection, vehicle/aircraft labels and fuel
-statistics panel agreed in discussion; schema v1.0 compatibility/bindings unresolved
+statistics panel agreed in discussion; D-046 runtime-scene boundary recorded;
+schema v1.0 compatibility/bindings unresolved
 
-**Last updated:** 31 October 2026
+**Last updated:** 1 November 2026
 
 **Primary decisions:** D-002, D-028, D-029
 
-**Review question:** Q-10; dependencies Q-01, Q-05, Q-06, Q-08, Q-13
+**Review question:** Q-10; dependencies Q-01, Q-05, Q-06, Q-08, Q-13, Q-15
 
 This draft records intended changes beside the existing
 [USD master contract](../../knowledge_base/usd_architecture/00_project_usd_contract.md)
@@ -36,6 +37,24 @@ reading primvars to calculate routes, including that behaviour in its Definition
 of Done. This conflicts with D-002's direction. Approval requires a deliberate
 contract/migration decision; do not silently maintain two state authorities.
 
+## Library-backed presentation boundary (D-046)
+
+The [standalone-library direction](architecture.md#standalone-omniverse-library-direction-d-046)
+evaluates `ovstage` and `ovrtx` as scene/rendering components of an
+application-owned runtime. Runtime scene data remains a projection of
+`WorldState`; scene reads for rendering do not become a second authority for
+fuel, request state or executed actions. UI commands retain their separate
+validated input path under Q-13.
+
+The runtime scene and a composed `pxr.Usd.Stage` are different representations.
+Q-10/Q-15 must define the mapping between source USD assets, agreed telemetry
+fields, runtime attributes and visible output, including updates and reset.
+D-046 does not approve new primvars, a schema version or an ABI-sharing model.
+Keep existing scene fundamentals and resolve the v1.0 conflict explicitly.
+Verify route geometry, materials, labels, fuel indicators and operator controls
+against the chosen library/UI path; a successful frame render alone does not
+establish these bindings or an interactive HUD.
+
 ## Schema compatibility
 
 | Existing v1.0 field | Existing meaning | Required review |
@@ -48,16 +67,25 @@ contract/migration decision; do not silently maintain two state authorities.
 | `primvars:logistics:priority` | Integer `1` highest to `5` lowest | Define mapping from internal score/policy; retain the existing direction unless explicitly revised |
 
 The source notes recognise that the current coarse fields cannot fully express
-all lifecycle/resource distinctions. They do not agree new field names, types,
-enum mappings, units or a new schema version. Finalise domain and fuel semantics
+all lifecycle/resource distinctions. D-042/D-043 now select domain units and
+refueller states, while concrete USD field names/types, enum mappings and schema
+version remain unapproved. Finalise the remaining domain semantics and migration
 before approving the projection.
 
-D-021 requires the separate pump-petrol quantity to remain visible and traceable
-alongside the other stocks. `Loading` now covers timed depot operations and
-internal movement under D-018–D-020; it does not mean the vehicle is instantly
-full or stationary. Decide which current post/operation/location data should be
-shown without treating those details as new tanker enum states. No new primvar
-name or schema version is approved by these requirements updates.
+D-021/D-042 require separate litre-valued refueller stocks, adopted capacities
+and 12.5% diesel/petrol reserve thresholds. Keep exact accounting separate from
+coarse analogue-style indications; gauge rounding cannot satisfy a resource guard.
+D-043 replaces Loading with RefillTank/RefillServiceFuel, uses Repositioning for
+internal depot travel and adds full-ready depot Standby. Field waiting remains
+Idle; do not add a tanker Parked alias to the aircraft state vocabulary. The full
+state set now contains eleven tanker states; concrete USD mappings remain Q-10.
+Display post/task/location and technical availability consistently; no new
+primvar name or schema version is approved by these requirements updates.
+
+The KrAZ-221 visual asset uses D-042's explicitly documented KrAZ-258B1 capability
+profile. Presentation metadata must preserve that distinction rather than imply
+historically verified KrAZ-221 consumption. Internal depot moves still take time
+although they consume no diesel; Refueling consumes pump petrol and no diesel.
 
 D-022–D-025 add waiting-arrival, direct reassignment and proactive depot-return
 transitions within the tanker state model. Display routes from actual
@@ -75,6 +103,12 @@ Whether dwell time, next check window and the reason for leaving a waiting
 location are exposed requires a projection decision; no new primvar is implied.
 
 ## Identity, display and authoring responsibilities
+
+D-047's GPS-like position samples are synthetic. Map their declared airfield
+reference frame explicitly to the ground network and metre-scale USD scene so
+aircraft/refuellers remain correctly located relative to infrastructure. Scene
+coordinates are not raw GPS values, and a rendered position does not imply a
+live or recorded positioning feed. See the [input-source contract](architecture.md#input-sources-and-synthetic-position-telemetry-d-047).
 
 Logical entity IDs must be associated with USD prim paths/assets by a binding
 layer. Solver inputs must remain independent of mesh names and prim paths.
@@ -155,6 +189,12 @@ Exact label layout, visual styling, anchor offsets, zoom/readability thresholds
 and overlap/occlusion behaviour remain Q-10 presentation details. Object
 bindings, fuel bars, status and schedule values must use the same authoritative
 current state and the existing projection direction.
+
+D-041 request history includes actual partial transfers, interruptions and executor
+changes. Display Completed only for full agreed delivery; cancelled outstanding
+fuel is not issued fuel. D-044 pump-petrol exhaustion interrupts aircraft service
+like pump failure but is an operational shortage, not a pump repair. Labels must
+not show either returning vehicle as available merely because it is moving.
 
 ## Fuel statistics panel (D-029)
 
@@ -249,8 +289,9 @@ The current project contract remains unchanged:
 - Existing `LOD` naming, geometry-purpose and instancing rules continue to apply.
 
 Scene time codes do not settle the simulation clock or replay contract. The
-standalone inspection bindings do not establish Kit/Houdini runtime compatibility
-or a functioning presentation adapter.
+standalone inspection bindings do not establish compatibility with embedded
+Houdini/Kit runtimes or the D-046 candidate libraries, or a functioning
+presentation adapter.
 
 ## Open questions and next steps
 
@@ -266,8 +307,10 @@ or a functioning presentation adapter.
   only after domain and resource semantics are reviewed.
 - Define runtime authoring layer, missing-prim handling, update/reset behaviour
   and how proposal/accepted/current views remain consistent.
+- **Q-15 dependency:** Validate the chosen library's scene-update bridge and
+  viewport/UI bindings while retaining Q-10's field meanings and D-002 ownership.
 
 After agreement, update the existing USD documents and their verification
-criteria together. A standalone serialisation check and later Kit/viewport
-checks can verify different parts of the adopted contract; neither is claimed
-to have validated this proposed runtime workflow.
+criteria together. A standalone serialisation check and later library-runtime
+and viewport checks can verify different parts of the adopted contract; neither
+is claimed to have validated this proposed runtime workflow.

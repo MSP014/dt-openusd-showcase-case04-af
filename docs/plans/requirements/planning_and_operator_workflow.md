@@ -71,7 +71,7 @@ replenishment. Deadline priority alone does not define the cost of visiting the
 stands in a particular order.
 
 The demonstration uses the [D-016 active/standby rotation](domain_and_state_machines.md#two-refueller-rotation-d-016--agreed-in-discussion).
-Apply the same duty-role and relief constraints to EDF and cuOpt, and include
+Apply the same field-duty, depot-readiness and relief constraints to EDF and cuOpt, and include
 both vehicles' travel, depot returns and diesel use in the cost comparison.
 Normal assignments must preserve each tractor's protected return. The required
 [D-017 diesel-assistance fallback](domain_and_state_machines.md#diesel-reserve-and-exceptional-assistance-d-017)
@@ -124,13 +124,15 @@ Account for both vehicles' complete travel, depot/field-parking legs, service
 and replenishment time, diesel cost and deadlines. A job fitting the remaining
 aviation fuel does not by itself prove that retaining the vehicle is cheaper.
 Do not reduce cost by silently dropping demand or worsening deadlines.
-The numerical planning horizon and final cost/deadline policy remain Q-08/Q-12.
+D-045 limits the optimisation horizon to one or two known requests; selection
+and complete-plan cost/deadline policy remain Q-08/Q-12.
 
 Both refuellers may operate on the airfield concurrently. D-016's one-Active,
 one-Standby-at-depot arrangement is a default, not a permanent restriction or
 an upper limit of one field vehicle. Do not force a useful vehicle back to the
-depot solely to recreate that arrangement. Duty-role labels remain separate
-from tanker states; this agreement adds no new state. D-032 separately adds Alert.
+depot solely to recreate that arrangement. D-043 makes depot Standby an explicit
+state and derives active duty from state/location/assignment, without separate
+role variables. D-032 separately adds Alert.
 
 **Agreed assessment sequence (synthetic 12/10/8-tonne example):**
 
@@ -164,6 +166,27 @@ feasible alternative assignment is selected, or the fleet plan selects
 replenishment, use the applicable depot-return transition with protected diesel
 reserve and coordinated field coverage. Current service remains uninterrupted;
 diesel assistance under D-017 is still an exceptional recovery requirement.
+
+## Bounded planning and information visibility (D-045)
+
+**Agreed in discussion, 31 October 2026:** Limit the rolling optimisation horizon
+to one or at most two nearest known fuel requests. Which requests count as
+nearest, the one/two selection rule and treatment of other outstanding deadlines
+remain Q-08; no queue-order or ETD-based selection is silently chosen.
+
+Keep scenario knowledge, revealed planner information and executable demand
+separate. A reproducible scenario/provider may retain a hidden future timeline;
+the planner must not see unrevealed events. Already revealed schedules still
+support D-024's one-hour check-window look-ahead and D-025/D-026 coverage planning.
+They do not create requests before eligibility. The complete known request queue
+remains visible in state/history; restricting a solve must not delete, complete
+or hide other outstanding requests or stop reporting their deadlines.
+
+Apply the same reveal policy, bounded horizon and selection rule to EDF and
+cuOpt. This deliberately reactive model does not establish a solver advantage;
+with so few candidates EDF and cuOpt may return equal results. Retain complete
+fleet route/depot costs and compare observed outcomes without claims of global
+optimality. Q-12 must define fixtures for both horizon settings and queue spillover.
 
 ## Requests and serve next
 
@@ -229,14 +252,15 @@ and feasibility diagnostics.
 
 Represent all three refueller stocks and their different consumption mechanisms.
 Depot visits use timed operations, internal travel and exclusive post occupancy
-under [D-018](domain_and_state_machines.md#transition-5-todepot-to-loading).
+under [D-018](domain_and_state_machines.md#transition-5-todepot-to-replenishment).
 Apply the agreed first-to-aviation/second-to-auxiliary simultaneous-arrival
 sequence and subsequent second-to-aviation move; include necessary coordination
 waits. Both EDF and cuOpt must respect the same post-release order and durations.
 The auxiliary post supplies diesel and petrol through separate dispensers.
 A feasible assigned departure can use partial
-stocks. Without an assigned request, follow D-019's parking/Idle branch; with an
-assigned request, evaluate D-020's departure guards. Verify how the selected
+stocks. Without an assigned task, follow D-019/D-043's full replenishment and
+parking/Standby branch; with an assigned request, evaluate D-020's departure
+guards. Verify how the selected
 solver interface represents these requirements and enforce unsupported guards
 in application validation;
 do not assume native cuOpt support for the third resource or depot phases.
@@ -282,7 +306,7 @@ only 10 tonnes. Retain it for other feasible work when selected by the fleet
 plan; dispatch the full second vehicle to field parking for the larger request.
 If replenishment is selected instead, apply `Idle -> ToDepot` or
 `Repositioning -> ToDepot` under D-025. Depot departure uses
-`Idle -> Repositioning` under D-026. This movement
+`Standby -> Repositioning` under D-026/D-043. This movement
 does not wait for an aircraft request or an open check window. The replacement
 must arrive and stop at field parking before a subsequent `Idle -> ToAircraft`
 assignment with an open window, actual request and all guards. Account for both
@@ -303,10 +327,11 @@ require a stop at the previous waiting destination or an intermediate Idle.
 The event does not reset fuel or position. D-026's depot replacement must first
 complete the required field-parking arrival, even if a request becomes eligible
 on the way; it is an exception to this ordinary redirection rule.
-D-030 also permits `Loading -> ToAircraft` during movement to depot parking
+D-030/D-043 also permit Repositioning -> ToAircraft during movement to depot parking
 after required replenishment is complete and all assignment guards pass from
 the actual position/stocks. Replace that parking route immediately without
-parking arrival, a stop or Idle; preserve elapsed travel and fuel use. This is
+parking arrival, a stop or Standby; preserve elapsed travel and actual balances.
+Internal depot movement consumes no diesel under D-042. This is
 distinct from D-026's required field-parking arrival for a coverage replacement.
 
 Completed deliveries remain completed. An ongoing refuelling service is not
@@ -330,8 +355,9 @@ donor if required by approach, donation and both vehicles' protected-return fuel
 checks. This means a depot visit on its remaining diesel, followed by timed
 replenishment of **tractor diesel and trailer aviation fuel**, with pump petrol
 independently checked/topped up under D-021. Retain the assistance assignment
-through `ToDepot -> Loading -> Repositioning`; depart directly to the recipient
-after repeated assistance checks, without a parking/Idle detour or another
+through ToDepot, required D-043 replenishment visits and Repositioning;
+depart directly to the recipient
+after repeated assistance checks, without a parking/Standby detour or another
 aircraft job. The recipient stays Alert throughout. The scenario assumes a
 traversable ground network; do not introduce impassable-road
 or disaster branches as dispatch requirements.
@@ -347,7 +373,8 @@ that a new aircraft request can silently redirect.
 
 D-038 reserves Refueling for aircraft service and Alert Refueling for diesel
 assistance. Repositioning remains the general non-ToDepot/non-ToAircraft transit
-state, with task purpose retained; internal Loading depot movement is unchanged.
+state, with task purpose retained; D-043 also uses it for internal depot moves.
+Pending post operations prevent inappropriate aircraft redirection.
 Never assign aircraft work to a technically unavailable vehicle merely because
 its travel state is ToDepot.
 
@@ -373,13 +400,15 @@ pending separately scoped recovery. Ordinary non-interruption rules concern
 priority/replanning changes, not continued use of faulty equipment. Preserve partial delivery and unserved
 demand; replan only the actual remaining work without declaring completion.
 
-For the candidate in-service pump failure, review the fastest **feasible**
+For D-044's in-service pump failure or pump-petrol exhaustion, review the fastest
+**feasible**
 second-vehicle takeover using actual position, fuel, route/travel limits and
 existing commitments. Do not assume a replacement is always idle at depot or
 interrupt its own valid service just to improve a route. Whether urgent takeover
 may omit D-026's field-parking stop remains Q-14, not an already approved
-exception. Record fault-caused loss of coverage. Q-14 selects concrete fault
-events, mobility/repair evidence and any non-mobile recovery; it does not reopen
+exception. Record fault-caused loss of coverage. D-044 selects concrete fault/
+shortage cases; Q-14 still owns exact timing, repair evidence and any separately
+scoped non-mobile recovery; it does not reopen
 the agreed mobile-vehicle ToDepot-to-Maintenance return sequence.
 
 **Q-13 — operating modes require review.** The 29 October clarification requires
@@ -436,8 +465,9 @@ selected by recording these questions.
 
 - **Q-08:** Agree priority factors/weights and the exact Serve next guarantee.
   Define queue-position semantics, infeasible-override feedback and the balance
-  of deadline performance against fleet route/diesel cost. Specify D-027's
-  candidate planning horizon and complete-plan comparison policy; the one-hour
+  of deadline performance against fleet route/diesel cost. Specify D-045's
+  one/two-request selection and queue-spillover rules and D-027's complete-plan
+  comparison policy; the one-hour
   Staging Point look-ahead does not automatically define this solver horizon.
 - **Q-09:** Select a cuOpt interface, verify required modelling features and
   identify application-side validation. Specify result identity, acceptance

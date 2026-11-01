@@ -1,18 +1,13 @@
 # Fuel Logistics — Domain and State Machines
 
-**Status:** Working draft; tanker transitions 1–4 agreed in discussion for all
-three fuel stocks; two-refueller rotation agreed;
-safe diesel return and exceptional assistance required; depot transitions 5–7
-and three-resource dispatch checks recorded; waiting arrival, direct in-motion
-assignment and event-driven waiting/relief rules agreed; remaining details open;
-Maintenance framework and fault withdrawal agreed; fault catalogue and recovery detail
-open; eight aircraft states and reviewed transitions agreed on 31 October;
-request records, event ordering and remaining boundary cases open
+**Status:** Working draft; eight aircraft states retained; normal request
+completion/history and selected fault cases agreed; explicit depot replenishment
+and Standby states supersede Loading; remaining transitions and event boundaries open
 
 **Last updated:** 31 October 2026
 
-**Primary decisions:** D-003, D-006, D-007, D-010, D-012, D-013, D-014, D-015,
-D-016, D-017, D-018, D-019, D-020, D-022–D-026, D-030–D-040; dependencies D-021, D-027
+**Primary decisions:** D-003, D-006, D-007, D-010, D-012–D-020,
+D-022–D-026, D-030–D-041, D-043, D-044; dependencies D-021, D-027, D-042, D-045
 
 **Review questions:** Q-03, Q-04, Q-05, Q-14; fuel dependencies Q-06, Q-07; modes Q-13
 
@@ -29,9 +24,9 @@ implement the state machines.
 
 | Concept | Recorded role | Contract still needed |
 | --- | --- | --- |
-| Flight | Schedule, arrival type, destination/next leg and operational profile | Flight ID versus physical aircraft ID; repeated flights and reassignment |
+| Flight | Schedule, arrival type, destination/next leg and operational profile | Concrete flight/aircraft IDs and reassignment records |
 | Aircraft | Physical service readiness and onboard aviation fuel | Final lifecycle, capacity/profile references and association with a flight |
-| Fuel request | A need for fuel service arising automatically or manually | IDs, quantities, eligibility, queue/assignment, completion, rejection and cancellation |
+| Fuel request | Independent service obligation; Completed after full agreed delivery; archived with actual transfers and executor changes under D-041 | IDs/versions, remaining state vocabulary, atomic updates and cancellation boundaries |
 | Refueller | Tractor plus aviation-fuel semi-trailer with its own operational state | Complete transitions, resource guards, location and current assignment |
 | Depot | Two exclusive-occupancy posts, agreed simultaneous-arrival order, separate auxiliary diesel/petrol dispensers and two-refueller parking under D-018/D-021 | Service rates, target quantities, remaining visit rules and internal holding/paths/timings |
 | Waiting location | Main Parking or Staging Point; arrival and one-hour/event-driven waiting policy under D-022/D-024 | Geometry, accessibility, selection and simultaneous-event ordering |
@@ -51,7 +46,7 @@ states. `Scheduled` and `Diversion` remain arrival types, not states.
 | `Inbound` | Actual approach, landing and taxi to the assigned stand |
 | `Parked` | Stopped at its stand, awaiting a check, service or a new flight |
 | `Refueling` | Aircraft service by a refueller has actually started |
-| `Alert` | A refueller fault interrupted aircraft service; awaiting replacement |
+| `Alert` | A selected refueller fault or pump-petrol exhaustion interrupted service; awaiting replacement |
 | `Ready` | Fuel-ready, committed preparation for departure under D-037 |
 | `Departing` | Actual movement from the stand, taxi, take-off run and take-off |
 | `Departed` | Airborne and outside the simulation zone; terminal for this scenario |
@@ -63,9 +58,9 @@ stateDiagram-v2
     Inbound --> Parked: Assigned stand reached and stopped
     Parked --> Refueling: Eligible service actually starts
     Parked --> Ready: Current-flight check passes
-    Refueling --> Ready: Service complete and readiness guards pass
+    Refueling --> Ready: Full agreed delivery, eligible unchanged flight
     Refueling --> Parked: Deficit, cancelled flight or future check window
-    Refueling --> Alert: Refueller technical fault
+    Refueling --> Alert: Technical fault or pump-petrol exhaustion
     Alert --> Refueling: Replacement actually resumes valid service
     Alert --> Parked: Flight cancelled before replacement arrival
     Ready --> Departing: Actual departure movement begins
@@ -85,17 +80,17 @@ taxiing, fuel-check or delay-risk state is required.
 | T2 | `Inbound -> Parked` | Assigned stand actually reached and aircraft fully stopped | Apply the current flight's check immediately if its window is already open |
 | T3 | `Parked -> Ready` | Current-flight check window open, active flight and sufficient actual onboard fuel | Commit readiness under D-037; otherwise remain Parked and calculate deficit demand |
 | T4 | `Parked -> Refueling` | Refueller actually arrives, aircraft eligible/ready to receive fuel and service starts | Commit the agreed service conditions under D-034; setup may be included in service duration |
-| T5 | `Refueling -> Ready / Parked` | Agreed operation finishes; evaluate actual stock, current flight and its check window | Ready only if the active current flight's window is open and fuel is sufficient; otherwise Parked. Create additional demand for a current-flight deficit when eligible; a cancelled flight has no active demand |
+| T5 | `Refueling -> Ready / Parked` | Full agreed delivery completes; D-041 closes the request | For an unchanged eligible flight, Ready without a second demand calculation. Changed/new/cancelled flights retain D-034/D-037 window and actual-stock guards; otherwise Parked with eligible additional demand only when required |
 | T6 | `Ready -> Departing` | Actual movement from the stand for departure begins | Retain the commitment; do not infer movement from ETD alone |
 | T7 | `Departing -> Departed` | Aircraft is airborne and has left the simulation zone | End that aircraft's participation in the current scenario |
-| T8 | `Refueling -> Alert` | Refueller technical fault interrupts service | Stop transfer, retain actual stock and outstanding committed quantity; faulty refueller follows D-035 |
+| T8 | `Refueling -> Alert` | Selected refueller technical fault or pump-petrol exhaustion interrupts service (D-044) | Stop transfer, retain actual stock and outstanding committed quantity; faulty refueller follows D-035 |
 | T9 | `Alert -> Refueling` | Replacement actually arrives and starts valid resumed service after checks/setup; outstanding commitment has not been cancelled | Transfer only the undelivered committed quantity; do not repeat earlier delivery |
 | T10 | `Alert -> Parked` | Flight cancelled before replacement arrival (D-039) | Cancel the outstanding old-request commitment, retain delivered fuel and await a new flight/check |
 
 `Parked -> Refueling` may recur for additional eligible demand. `FuelChecked`
-and `Sufficient` are check results, not aircraft states. Service completion and
-departure guards must prevent aircraft movement while servicing equipment still
-prevents it; detailed teardown and request-closure ordering remain Q-05.
+and `Sufficient` are check results, not aircraft states. D-041 separates delivery completion from equipment release. Completed and Ready
+do not authorise aircraft movement while hoses/equipment or the refueller still
+obstruct departure. Detailed release timing and same-time boundaries remain Q-05.
 
 An aircraft awaiting a tanker stays `Parked` until refuelling actually begins;
 the request carries waiting/queue information. An inbound flight can be known to
@@ -109,9 +104,10 @@ automatic dispatch is required, while the mode-specific confirmation and
 intervention contract is open under [Q-13](planning_and_operator_workflow.md#operator-acceptance-and-unresolved-result-handling).
 Physical animation need not depict every logical setup operation. D-037 fixes
 committed readiness, not a full ATC or pre-flight inspection model. The eight
-aircraft states are agreed; request enums and the remaining Q-05 boundary cases
-are not thereby finalised. D-040 separates schedule, prediction and actual
-departure. The existing tanker state machine is unchanged by this review.
+aircraft states are agreed; D-041 agrees request Completed and archive/history behaviour; the remaining
+request enums and Q-05 boundary cases are not thereby finalised. D-040 separates schedule, prediction and actual
+departure. The aircraft review retained the tanker model; the later D-043 depot review below
+explicitly amends that model.
 
 ## Fuel check and request lifecycle
 
@@ -122,31 +118,56 @@ with `required_departure_fuel` from the [fuel model](fuel_and_service_model.md#a
 
 | Outcome | Aircraft effect | Request effect |
 | --- | --- | --- |
-| Sufficient fuel | `Parked -> Ready` | No refueller call required |
-| Insufficient fuel | Remain `Parked` until actual service starts | Create a request for the calculated deficit |
-| Refuelling starts | Aircraft and refueller enter their own `Refueling` states | Active-service representation remains to be defined |
-| Final check sufficient and current-flight window open | Ready for the active current flight; a cancelled flight remains Parked | Completion/closure record ordering remains to be defined |
-| Delivery complete before changed/new flight's window | Parked even if actual stock is already sufficient | Completed delivery is retained; do not create a premature new service request |
-| Current-flight check insufficient at its check window (D-037) | Remain Parked, awaiting additional service | Retain/create calculated additional demand using actual onboard fuel; detailed closure/identity remains open |
+| Sufficient fuel at current-flight check | Parked -> Ready | No request created |
+| Calculated deficit | Remain Parked until service starts | Create a request for the missing uplift |
+| Eligible service actually starts | Parked -> Refueling | Begin execution of the agreed delivery |
+| Full agreed delivery, unchanged eligible flight | Refueling -> Ready | Completed; retain the closed record and transfer history |
+| Earlier delivery completes before a changed/new flight's window | Parked even if stock is sufficient | Completed delivery retained; no premature new request |
+| Changed/current-flight check finds a deficit when eligible | Parked awaiting additional service | Calculate additional demand from actual stock; identity/version detail remains open |
+| Flight cancelled during running service | Parked after committed delivery | Complete the original delivery under D-034; no departure for the cancelled flight |
 
-`FuelChecked / Sufficient` describes a check result, not a persistent aircraft
-state. The flight's request has its own lifecycle; no request enum has yet been
-agreed. The source proposal's examples of request stages (not requested, pending,
-ready, refuelling, completed) are descriptive examples only.
+FuelChecked / Sufficient are check results, not aircraft states. D-041 agrees
+Completed as a request status; other request enums are not yet finalised.
+The first routine check creating a flight's request occurs in Parked. If the
+window is already open on stand arrival, perform the check immediately after T2.
+A changed/new flight retains its own check window and actual onboard fuel.
+If its window opens during committed service, do not interrupt that service or
+duplicate its demand. Exact lead time, ETD rescheduling and simultaneous-event
+ordering remain Q-02/Q-06. Cancellation follows D-033/D-034/D-039.
 
-The first routine check creating a flight's service request occurs in Parked,
-not inside Refueling. If the check time has passed at actual stand arrival,
-perform it immediately after T2. A changed/new flight uses its own window and
-retained fuel; delivery completion does not open that window early. If the
-window opens during an already committed operation, do not interrupt it or
-duplicate its demand; assess readiness after completion. Exact lead time,
-ETD-change rescheduling and same-time event ordering remain Q-02/Q-06.
-Cancellation/revision follows D-033/D-034 and the D-039 exception below.
+### Normal completion and request history (D-041)
 
-**Review finding:** D-014 says the current request is closed after refuelling.
-D-007 permits an insufficient final check and request revision. Decide the
-ordering and consistent updates of fuel check, request closure and both vehicle
-states; do not silently resolve this during restructuring.
+**Agreed in discussion, 31 October 2026:** For an unchanged flight whose
+pre-departure check created the deficit request, transfer the full agreed uplift,
+mark the request Completed and close it, and change the aircraft Refueling ->
+Ready. A second calculation of the same flight's fuel need is not required.
+Execution must still verify the actual delivered quantity and conserve the
+aircraft/refueller balances; this is completion accounting, not another demand check.
+
+Delivery completion, equipment disconnection and release of the service position
+are distinct milestones. Completed closes the delivery obligation; the refueller
+remains occupied until shutdown/disconnection/release permits its next movement.
+Ready does not allow the aircraft to move while service equipment blocks it.
+Precise timing, atomic event updates and a fault after full delivery but before
+release remain open. Do not invent a Ready reversal to resolve that boundary.
+
+After release, retain D-014/D-015/D-027 branching: directly serve another feasible
+assigned aircraft, reposition to field waiting when unassigned, or return for
+selected replenishment. For field waiting, Repositioning ends in Idle only on
+actual arrival and stopping. The descriptive tanker word Parked in the review
+maps to Idle; Aircraft Parked remains its own state.
+
+All requests, including completed and cancelled ones, remain in the history/archive.
+A partial transfer or change of executor does not automatically create a new
+request. A replacement continues only the still-valid outstanding quantity of
+the original request, using resource checks for that remainder. Retain causes,
+interruption/resumption events, actual transferred quantities and executor changes.
+Completed requires full agreed delivery; cancellation under D-039 closes only
+the old undelivered obligation as cancelled, never as delivered. Exact archive
+storage, request/commitment IDs, versions and other request states remain open.
+
+D-041 covers normal completion; it does not remove D-034's cancelled-flight
+outcome or D-037's changed/new-flight window and actual-stock checks.
 
 ## Request cancellation and revision (D-033)
 
@@ -206,19 +227,21 @@ rules; create additional service only for a calculated deficit.
 
 Ordinary cancellation/replanning must not interrupt committed service. D-035
 requires immediate aircraft-service withdrawal on any detected technical fault,
-even when some equipment can still function; Q-14 selects the event catalogue.
+even when some equipment can still function; D-044 selects the event catalogue.
 D-034 does not override that technical-fault withdrawal rule.
 **31 October exception (D-039):** After fault interruption, cancellation while
 the aircraft is Alert and before replacement arrival cancels the old undelivered
 commitment. This is not permission to interrupt running service manually.
 Completion of the committed delivery and fuel-readiness for an updated/new
-flight are distinct outcomes; final-check/request-closure sequencing still
-requires the remaining Q-05 contract.
+flight are distinct outcomes. D-041 fixes normal completion without a second
+same-flight demand calculation; changed-flight readiness and remaining
+identity/release sequencing retain their Q-05 boundaries.
 
 ## Aircraft interrupted service and committed readiness (D-036/D-037)
 
 **D-036 — agreed in discussion:** If aircraft refuelling is interrupted by a
-refueller's technical fault, the **aircraft** changes `Refueling -> Alert`,
+refueller's technical fault, or D-044 pump-petrol exhaustion, the **aircraft**
+changes `Refueling -> Alert`,
 retaining its actual onboard fuel and remaining service need. This identifies
 an abnormal interruption, not a mechanical fault in the aircraft. It waits for
 a replacement refueller. On actual arrival, readiness/setup and service guards
@@ -290,35 +313,43 @@ Detailed preparation duration and movement scheduling remain to be specified.
 
 ## Tanker states
 
-**D-010 — basic model and sequential service agreed in discussion:** Use a
-separate state model for the KrAZ-221 + early TZ-22 assembly. D-013 adds the
-seventh state; D-032 adds Alert and D-038 separates Alert Refueling, giving
-**nine** recorded tanker states. Full exception details remain incomplete.
+**D-043 — agreed in discussion, 31 October 2026:** Replace the former Loading
+state with explicit replenishment states and use Repositioning for internal
+depot movement. Standby becomes a state rather than a separate duty-role variable.
+The visual assembly is KrAZ-221 + TZ-22 with the separately selected
+[KrAZ-258B1 capability profile](reference_profiles.md#adopted-simulation-profile-d-042).
 
-| Recorded state | Meaning |
+| State | Meaning |
 | --- | --- |
-| `Idle` | Available, waiting for assignment |
-| `ToDepot` | Travelling to the aviation-fuel depot |
-| `Loading` | Required depot replenishment and internal movement between posts or to depot parking; ends on direct dispatch or arrival at parking under transitions 6/7 |
-| `ToAircraft` | Travelling to the assigned aircraft |
-| `Refueling` | Aircraft aviation-fuel service, including its setup under D-012; not tractor-diesel assistance |
-| `Alert Refueling` | D-032 tractor-to-tractor diesel assistance; both donor and recipient use this state with distinct roles |
-| `Repositioning` | General airfield transit other than ToDepot travel or ToAircraft travel; includes field waiting/coverage moves and assistance approach; internal depot movements remain Loading where already agreed |
-| `Maintenance` | Unavailable for service during maintenance |
-| `Alert` | Exceptional unavailability requiring attention; in D-032, a refueller waiting for diesel assistance and unavailable for aircraft assignments; display as Alert! |
+| Idle | Available and stopped at a permitted field waiting location |
+| Standby | At depot reserve parking, technically ready, service operations complete and all three stocks at 100% |
+| ToDepot | Travelling to the depot for replenishment or maintenance; fault unavailability remains explicit |
+| RefillTank | Timed replenishment of the semi-trailer's aviation fuel at its post |
+| RefillServiceFuel | Timed diesel and pump-petrol replenishment at the auxiliary post; separate balances/operations |
+| ToAircraft | Travelling to an assigned eligible aircraft |
+| Refueling | Aircraft service, including setup under D-012; separate petrol pump drive, zero tractor diesel consumption |
+| Alert Refueling | Tractor-to-tractor diesel assistance under D-032/D-038; explicit donor/recipient roles |
+| Repositioning | Movement outside ToDepot/ToAircraft, including field waiting, coverage, assistance approach and internal depot movements |
+| Maintenance | Technical repair; not ordinary replenishment |
+| Alert | Exceptional unavailability/attention, including an immobile diesel-assistance recipient |
 
-**D-038 — agreed state vocabulary:** Refueling is reserved for aircraft
-refuelling; Alert Refueling is the separate diesel-rescue state. Repositioning
-remains one general transit state and is not split into waiting, coverage and
-assistance substates. Retain task destination/role for selecting the right
-transition. A technically faulty tanker travelling in ToDepot remains unavailable
-for assignments and field-readiness accounting until repaired.
+There are eleven recorded tanker states after replacing Loading and adding
+Standby. The full transition matrix is not yet approved. Repositioning retains
+the operation/destination and unfinished depot requirements; its name alone does
+not make a vehicle available for assignment. No separate Active/Standby role
+variables are introduced. Standby is depot readiness, not physical field coverage.
 
-The tanker may serve several aircraft sequentially without a depot visit when
-aviation fuel is sufficient and the applicable plan is feasible. Partial tank
-depletion does not automatically trigger a depot return. Resource limits and
-the planner can require replenishment. Current aviation fuel, tractor diesel
-and pump petrol remain distinct numerical fields, not additional states.
+Under D-042, internal depot movement takes time but consumes no tractor diesel.
+This deliberate simplification preserves full tanks on arrival at reserve parking.
+Enter Standby only after actual arrival/stopping and all readiness conditions;
+repair completion or arrival at a fuel post does not refill anything implicitly.
+Idle is field waiting with actual stocks and is not a synonym for Standby.
+
+D-038 retains separate aircraft Refueling and diesel-assistance Alert Refueling.
+A faulty vehicle travelling in ToDepot remains unavailable until repaired.
+A vehicle may serve several aircraft without visiting the depot when the plan
+and all three resource guards remain feasible. Partial depletion alone does not
+force a return; field waiting does not require full tanks.
 
 ## Locations and Repositioning
 
@@ -326,8 +357,8 @@ and pump petrol remain distinct numerical fields, not additional states.
 
 - **Fuel Depot:** One aviation-fuel replenishment base, separate from waiting
   locations; unlimited supply is defined by [D-004](fuel_and_service_model.md#depot-and-resource-accounting).
-  D-018 now defines arrival into `Loading`, two posts and a separate depot
-  parking area with capacity for both refuellers. This depot parking area is
+  D-018/D-043 define two replenishment posts, timed internal Repositioning and
+  separate depot reserve parking with capacity for both refuellers. This depot parking area is
   distinct from terminal-side Main Parking and the Staging Points below.
 - **Main Parking:** One main long-term parking location near the terminal.
 - **Staging Points:** One or two authorised short-term waiting locations close
@@ -350,11 +381,13 @@ event ordering still require detail.
 
 ## Two-refueller rotation (D-016 — agreed in discussion)
 
-- The full demonstration requires **two identical KrAZ-221 + TZ-22 refuellers**,
+- The full demonstration requires **two visually identical KrAZ-221 + TZ-22 refuellers**,
+  using the KrAZ-258B1 capability profile under D-042,
   including provision for fault tolerance under D-017.
   Normally one is the **Active** duty vehicle on the airfield; the other is
-  fully replenished and waiting at the Fuel Depot as **Standby**. These are
-  *duty roles*, not additional tanker enum states. D-027 permits both vehicles
+  fully replenished and waiting at the Fuel Depot in **Standby**. Under D-043,
+  Standby is an explicit state; active field duty is derived from actual state,
+  location and assignment, without separate role variables. D-027 permits both vehicles
   to work on the field concurrently; the default is not a permanent requirement
   to keep one at the depot or to send a useful field vehicle back.
 - After cuOpt/planning identifies the next fuel-service request, check whether
@@ -377,7 +410,7 @@ event ordering still require detail.
   D-027-reviewed plan selects replenishment and it is safely reachable. Otherwise
   it can remain for a feasible alternative assignment. At depot it replenishes aviation fuel, tractor diesel and
   pump petrol as required, then waits fully replenished as the new Standby.
-  The two vehicles alternate these roles as needed. A partial-stock departure
+  The two vehicles alternate field duty and depot reserve as needed. A partial-stock departure
   for a specific feasible assignment is allowed under D-020; it does not
   redefine the fully replenished Standby condition.
 - Prevent running out of tractor diesel through dispatch guards. Exceptional
@@ -449,7 +482,7 @@ reopen this assignment-review and selected-replenishment behaviour.
    enters `Alert` at its actual location and waits for the second vehicle.
    It is unavailable for aircraft assignments. Use **Alert!** as the working
    visible designation for such exceptional situations; which other faults
-   use this state/indication is part of the Q-14 fault catalogue.
+   use this state/indication is defined by D-044 and remaining Q-14 detail.
 2. If the second vehicle is busy, the recipient remains `Alert` until that
    work finishes. Schedule assistance next rather than interrupting its current
    aircraft service or declaring assistance impossible merely because it is busy.
@@ -484,17 +517,18 @@ in `ToDepot`, using its actual remaining diesel; normal reserve checks must
 already cover that trip. The recipient remains in `Alert` throughout travel,
 depot operations and subsequent approach.
 
-At depot arrival enter `Loading`. Replenish **both the donor's tractor diesel
+At depot arrival use the required RefillTank/RefillServiceFuel visits under
+D-043. Replenish **both the donor's tractor diesel
 and its semi-trailer's aviation fuel**, even though the assistance itself is a
 tractor-diesel transfer. Check pump petrol independently under D-021 and top it
 up if required by the readiness/next-work policy. Account for the agreed post
 sequence, occupation, loading and internal travel time; no instantaneous refill.
 
 After required replenishment and successful repeated assistance fuel checks,
-go directly `Loading -> Repositioning` to the recipient, then use D-032's
+go directly into Repositioning towards the recipient after completed operations, then use D-032's
 `Alert Refueling` transfer. The assistance task remains assigned through the
-depot visit: no intermediate depot-parking/Idle step or field-parking stop is
-required. D-019's no-assignment parking branch does not apply to this assigned
+depot visit: no intermediate depot-parking/Standby step or field-parking stop is
+required. D-019/D-043's no-task Standby branch does not apply to this assigned
 assistance departure. Do not insert another aircraft job before the agreed
 assistance merely to avoid the donor's necessary replenishment.
 
@@ -515,97 +549,72 @@ defined without reopening this state sequence.
 
 ## Depot loading and departure
 
-### Transition 5: ToDepot to Loading
+### Transition 5: ToDepot to replenishment
 
-**D-018 — agreed in discussion:** Arrival at the Fuel Depot automatically
-changes `ToDepot -> Loading` and starts the required replenishment operations.
-Arrival itself does not refill any tank or complete those operations.
+**D-018, amended by D-043:** Actual depot arrival selects the required post or
+repair destination. Replenishment starts only after actual arrival at an available
+post; use Repositioning for internal travel and account for necessary coordination
+waits. At the aviation post enter RefillTank; at the auxiliary post enter
+RefillServiceFuel. Ordinary replenishment does not enter Maintenance.
 
-- **Aircraft Fuel Loading:** Loads aviation fuel into the semi-trailer tank.
-- **Diesel/Petrol Refueling** (previously labelled **Diesel Refueling**): Provides
-  diesel and petrol through **separate dispensers**, replenishing the tractor
-  tank and the independent pump-petrol tank under D-021. The two fuels retain
-  separate balances and operations.
-- Required post visits occur sequentially, with physical movement and elapsed
-  service time inside `Loading`. Unneeded replenishment may be skipped for a
-  specific feasible assignment under D-020. The simultaneous-arrival order
-  below is agreed; other visit/skip rules and the diesel/petrol service sequence
-  within the auxiliary post remain open.
-- Each post accommodates **one refueller at a time**. Both posts are operational;
-  this does not mean either is always vacant. The earlier blanket assumption of
-  no post-occupancy queues is superseded by the coordinated sequence below.
-  No additional external traffic/queue is modelled. Account for any necessary
-  wait for release rather than allowing overlapping occupancy or free time.
-- A separate depot parking area holds **two TZ-22 assemblies simultaneously**.
-  It is not either replenishment post.
+The aviation post loads the semi-trailer. The auxiliary post has separate diesel
+and pump-petrol dispensers. Each post holds one vehicle; one vehicle cannot use
+both spatially separated posts simultaneously. Required visits and movement are
+sequential for that vehicle, while the two vehicles may use different posts
+concurrently. Diesel and petrol dispensing order within the auxiliary post,
+post rates, safe holding geometry and first/second tie-breaking remain open.
 
-**Simultaneous arrival of both refuellers:**
+Preserve D-018's agreed simultaneous-arrival order:
 
-1. Route the first vehicle to **Aircraft Fuel Loading**, and the second to
-   **Diesel/Petrol Refueling**. These operations can proceed at different posts
-   concurrently, using their actual durations.
-2. The first completes its required replenishment, including an auxiliary-post
-   visit if its diesel or pump petrol needs topping up. That visit can start
-   only after the second has cleared the auxiliary post. With an assigned
-   request and all three guards satisfied, the first departs under transition 7;
-   otherwise it proceeds to depot parking under transition 6.
-3. The second then moves to the vacated **Aircraft Fuel Loading** post to
-   replenish its semi-trailer. Its aviation-fuel loading must not start before
-   the first completes the preceding step and clears that post.
+1. The first uses aviation loading; the second uses the auxiliary post.
+2. The first completes its required visits, including the auxiliary post when
+   needed and after the second has cleared it, then departs or proceeds to parking.
+3. The second then uses the vacated aviation post. Respect post clearance and
+   any required holding/movement; do not assume simultaneous swaps or equal durations.
 
-Count service, post clearance, physical movement and any required coordination
-wait as elapsed time within `Loading`. Different operation durations must not
-cause both vehicles to occupy one post. Selecting which simultaneous arrival
-is designated first, and the safe holding/movement geometry, remain details
-under Q-02/Q-07; the agreed first/second post sequence is fixed.
+Outside that specific sequence, choose the necessary visits/order under the
+remaining visit policy. An unnecessary post can be skipped for a feasible
+assignment; entering Standby requires all three stocks at 100%. RefillTank ->
+Repositioning -> RefillServiceFuel and the reverse order describe separate timed
+visits, not permission to override the simultaneous-arrival agreement. Separate
+depot parking holds both vehicles; both at depot still fail normal field coverage.
 
-The result of transition 5 is entry into depot operations. Completion is checked
-before transition 6 or 7, rather than being an immediate effect of arrival.
+Internal depot travel consumes time but no tractor diesel under D-042. Depot
+pumping equipment/petrol consumption and numerical replenishment/repair durations
+remain to be specified; do not infer free use of the onboard petrol engine.
 
-### Transition 6: Loading to Idle
+### Transition 6: Replenishment to Standby
 
-**D-019 — agreed in discussion:** Once required replenishment is complete and
-there is **no assigned aircraft-service request**, send the refueller to depot
-parking, unless D-032's assigned diesel-assistance departure applies.
-It remains `Loading` during this internal movement and enters `Idle`
-only on actual arrival. Both vehicles may park there concurrently.
+**D-019, amended by D-043:** Without an assigned service or D-032 assistance task,
+complete the replenishment needed for reserve duty: aviation fuel, tractor diesel
+and pump petrol at 100%, confirmed technical readiness and completed operations.
+Move to depot reserve parking in Repositioning, then enter Standby only after
+actual arrival and stopping. No direct field Idle -> Standby transition exists.
 
-The reserve vehicle retains D-016's fully replenished Standby condition, now
-covering all three refueller stocks. With a valid assigned request, evaluate
-transition 7 instead of inserting an `Idle` step. D-030 permits that transition
-even after movement to depot parking has started, provided all guards pass.
-Same-time arrival/assignment event ordering remains under Q-02.
+A vehicle en route to depot parking may take a valid eligible assignment under
+D-030 after required operations are complete and all guards pass. It need not
+reach parking, stop or enter Standby. Incomplete replenishment is not cancelled
+merely because the vehicle's current state is Repositioning.
 
-### Transition 7: Loading to ToAircraft
+### Transition 7: Completed replenishment to ToAircraft
 
-**D-020 — agreed in discussion:** At the depot, required replenishment is complete,
-an actual current aircraft-service request is assigned, and the whole assignment
-is feasible. Independently check the [D-021 stocks](fuel_and_service_model.md#three-refueller-fuel-stocks-d-021):
+**D-020/D-030, amended by D-043:** After completing the required operations and
+releasing equipment, an eligible aircraft assignment may depart directly from
+the depot or redirect during Repositioning to depot parking. Check actual
+position, all three remaining stocks, route/readiness/time and the protected
+diesel return. No depot parking arrival, Idle or Standby step is required.
 
-- Aviation fuel covers the requested uplift.
-- Tractor diesel covers the trip, required manoeuvres, applicable service use
-  and return to the Fuel Depot with the protected reserve.
-- Pump petrol covers the required aviation-fuel pumping with its operating reserve.
+For a specific assignment, aviation fuel must cover its full assigned uplift,
+pump petrol its pumping requirement and reserve, and diesel the counted travel
+and protected return. Partial stocks are permitted when every guard passes;
+full tanks are mandatory for Standby, not for every depot departure.
+If guards fail, retain the necessary replenishment/assignment-review branch.
 
-Full tanks are not required for this assigned departure. For example, replenish
-only aviation fuel if the other stocks already cover the assignment and their
-reserves. When all guards pass, assign the route, change `Loading -> ToAircraft`
-and depart directly. If any stock is insufficient, remain `Loading` for the
-necessary replenishment and repeat the checks. With no assigned request, follow
-transition 6. Direct departure belongs to transition 7, not transition 5.
-
-**D-030 — assignment during movement to depot parking agreed:** If required
-replenishment is complete and a valid eligible aircraft-service assignment is
-made while the vehicle is driving to depot parking inside `Loading`, apply all
-three fuel guards and the other route/readiness/time checks from its actual
-current position and remaining stocks. On success, replace the parking route
-and immediately enter `Loading -> ToAircraft`. It need not reach or stop at
-depot parking or enter `Idle`. Preserve travelled distance, elapsed time and
-fuel already consumed. If a guard fails, do not dispatch it to the aircraft;
-retain the applicable replenishment/assignment-review rules. This clarifies
-transition 7 without adding a new tanker state or interrupting incomplete
-replenishment. D-026's separate coverage trip still requires arrival at field
-parking; depot parking and field parking are distinct destinations.
+D-026 coverage replacement remains distinct: dispatch to field parking and
+actually arrive/stop there before eligible aircraft-bound departure. D-032
+assistance departure remains direct to its recipient after preparation, without
+an intermediate depot or field parking stop. A new state name does not waive
+either task's existing route/eligibility rules.
 
 ## Waiting, reassignment and proactive replenishment
 
@@ -617,7 +626,7 @@ route and enter `Idle` if no aircraft-service assignment has been made. Record
 the actual location; subsequent routes start there. `Idle` means available for
 selection, not automatically feasible for every request or fully replenished.
 All three fuel guards and the other feasibility checks apply to each assignment.
-Depot parking arrival remains transition 6, not this transition.
+Depot reserve parking arrival enters Standby under transition 6/D-043, not Idle.
 
 ### Transition 9: Repositioning to ToAircraft
 
@@ -633,7 +642,7 @@ The vehicle need not first reach or stop at the Staging Point or Main Parking;
 no intermediate `Idle` is required. Preserve its position, elapsed travel and
 spent fuel. Receiving a request or computing a candidate plan is not itself an
 executable assignment. Authorisation follows Q-13. D-030 covers assignment during
-the distinct `Loading` movement to depot parking. D-026's replacement
+Repositioning to depot parking after completed replenishment (D-043). D-026's replacement
 trip from depot to field parking must complete its parking arrival first;
 it is an explicit exception to direct in-motion aircraft assignment.
 
@@ -702,7 +711,7 @@ at least **one operationally ready refueller must be physically on the airfield*
 Sending an active vehicle for replenishment therefore requires dispatching its
 fully replenished replacement from the depot, irrespective of whether the next
 aircraft's fuel-check window has opened. Coverage readiness and availability
-for a particular service are distinct from the tanker state and duty-role labels;
+for a particular service are distinct from the tanker state and displayed duty;
 a vehicle at the depot does not provide physical field coverage.
 
 D-027 permits **both** refuellers on the field for feasible work. D-026 is a
@@ -711,7 +720,7 @@ to preserve an occupied depot Standby position. The full second vehicle can
 also be brought out for a request the first cannot serve while retaining the
 first for another feasible assignment; its field-parking arrival still applies.
 
-The depot Standby leaves `Idle -> Repositioning` towards an authorised field
+The depot reserve leaves `Standby -> Repositioning` under D-043 towards an authorised field
 parking location (Staging Point or Main Parking as selected by the spatial
 policy). It must actually arrive and stop, entering `Idle` under transition 8.
 This is not a direct depot-to-aircraft assignment, even when the arriving
@@ -752,7 +761,7 @@ without interruption. Coordinate the second vehicle's actual field readiness
 under D-026 before a planned withdrawal. Travel to the depot with protected
 diesel reserve in `ToDepot`, then enter `Maintenance` on actual arrival at its
 maintenance area. Arrival for maintenance selects `ToDepot -> Maintenance`;
-arrival for replenishment remains `ToDepot -> Loading`. Maintenance need/reason
+arrival for replenishment selects the required post under D-043. Maintenance need/reason
 is conceptual metadata, not a new tanker state or an approved schema field.
 
 ### Fault withdrawal and depot return (D-035)
@@ -787,95 +796,90 @@ coverage gap and replan the second vehicle.
 
 ### Exit
 
-Require a recorded maintenance-completion result and confirmed technical
-readiness; elapsed expected duration alone is not evidence of repair. Recheck
-actual stocks and plan before making the vehicle available:
+Require recorded repair completion and technical readiness, then recheck actual
+stocks and the next task. Repair does not refill any stock. Use the required
+RefillTank/RefillServiceFuel visits with timed Repositioning when replenishment
+is needed. A valid feasible aircraft assignment may depart after repair/release
+without mandatory reserve parking, retaining D-026's distinct coverage route.
+Without a task, replenish all three stocks and reach reserve parking before
+Standby. Full transition coverage and spatial repair-area exit details remain open.
 
-- At depot with required replenishment: `Maintenance -> Loading` for timed
-  necessary operations; do not reset balances at maintenance completion.
-- With a valid eligible service assignment and all three fuel, route/readiness
-  and timing guards satisfied: permit `Maintenance -> ToAircraft`
-  from the actual position without a mandatory waiting stop.
-- With no service assignment: `Maintenance -> Idle` once stationary and ready
-  at a permitted location. Detail any movement out of the maintenance area and
-  parking access before approving the spatial trace.
+### Q-14: selected fault catalogue and interrupted service (D-044)
 
-Coverage replacement from depot still follows D-026's field-parking-first route;
-it does not use direct aircraft dispatch to bypass that rule. Fully replenished
-Standby readiness requires all three stocks, not merely a repair-complete event.
-The framework adds no state beyond the current model, including D-032's Alert;
-the entry/exit framework is agreed. Spatial details, concrete repair-completion
-evidence, durations and selected fault events still need specification.
+**Agreed in discussion, 31 October 2026:** The selected catalogue contains:
 
-### Q-14: synthetic fault catalogue and interrupted service
+| Event | Modelled effect and recovery |
+| --- | --- |
+| Tyre puncture during Repositioning | Under this scenario assumption the tractor remains mobile but is unavailable for aircraft service. Expose Alert/reason, review any affected assignment and return in ToDepot; enter Maintenance at the repair area for wheel replacement |
+| Pump failure during Refueling | Stop transfer immediately; Aircraft Refueling -> Alert. Retain original request and actual delivery. The mobile failed vehicle returns unavailable in ToDepot, then Maintenance; a feasible replacement resumes only the still-valid remainder after actual arrival/setup |
+| Pump-petrol exhaustion during Refueling | Operational exception that normal guards must prevent. Stop transfer, retain balances/request and place the aircraft in Alert; the mobile vehicle returns for petrol replenishment, not pump repair. A feasible replacement continues the original remainder |
 
-Review which technical events the Synthetic Data Provider may emit before
-adopting fault cases or executable fixtures. For each selected type define:
-affected vehicle/component, event time and reproducible scenario inputs;
-which components/capabilities are affected; mobility for D-035's depot return;
-repair/completion conditions and duration;
-assignment/recovery policy and treatment of field-coverage loss. These are
-event-contract requirements, not an implemented event schema or fault simulator.
+The tyre case is limited to Repositioning; do not silently extend it to ToAircraft
+or ToDepot, or adopt additional faults at arbitrary transitions. If the affected
+task is coverage or assistance rather than aircraft service, replan that actual
+task; do not invent an aircraft assignment from the state name.
 
-**Candidate, not yet adopted — pump failure during aircraft refuelling:** If
-included, stop aviation-fuel transfer when the failure occurs; retain actual
-delivered fuel and the unserved demand rather than marking the request complete.
-Make the failed vehicle unavailable and initiate replanning. Under D-035, after
-equipment release it returns in ToDepot and enters Maintenance on actual depot
-arrival if mobility/diesel checks pass; it does not continue aircraft work.
-A movement-preventing fault instead needs the separate Alert recovery contract.
-The second vehicle should
-take over as quickly as feasible, respecting its actual location, resources,
-route limits and existing commitments. Review whether this emergency takeover
-may go directly from depot to the affected aircraft, bypassing D-026's ordinary
-field-parking stop. That exception is open, not an inferred change to D-026.
-Define partial-service accounting, handover and aircraft/request state updates
-under Q-05/Q-14. This candidate does not yet authorise the provider to inject
-pump faults, preselect other failure types or claim a validated recovery model.
+For a mobile technical fault, D-035's unavailable ToDepot -> Maintenance sequence
+remains in force after shutdown/release. Alert indication/reason does not grant
+eligibility during return. Pump-petrol exhaustion is an operational shortage;
+Maintenance is reserved for technical repair. Pump repair takes longer than
+ordinary petrol replenishment in the selected qualitative profile; exact travel,
+repair/replenishment durations and completion evidence remain parameterisation work.
+
+The separate petrol engine powers pumping. Tractor diesel consumption in
+Refueling is zero under D-042, so exhaustion caused by service-time diesel use
+is excluded. The earlier donor branches for continuing aircraft service after
+such exhaustion are superseded. This does not cancel D-017/D-032's existing
+exceptional protected-return assistance. Any further movement-exhaustion event
+scope must be reviewed separately; guards still prevent routine diesel stranding.
+
+Resume aircraft Alert -> Refueling only when the replacement actually arrives
+and starts valid service after checks/setup, not on arrival alone. D-039 still
+cancels the old remainder if the flight is cancelled before replacement arrival.
+Do not reset fuel, duplicate the request or count unserved fuel as delivered.
+The route for urgent aircraft takeover, including any field-parking exception,
+and simultaneous-event ordering remain open. No fault probabilities, towing or
+new immobile technical recovery are adopted by this catalogue.
 
 ## Tanker transitions
 
-| Transition | Trigger and conditions | Recorded action/result | Status and limits |
-| --- | --- | --- | --- |
-| 1: `Idle -> ToAircraft` (D-011) | An eligible next service is assigned; tanker is free, passes all three D-021 fuel checks and meets the other feasibility guards | Start travelling to the assigned aircraft | Agreed in discussion; queue, override and acceptance details are owned by [planning](planning_and_operator_workflow.md#requests-and-serve-next) |
-| 2: `ToAircraft -> Refueling` (D-012) | Arrived at assigned aircraft; aircraft is on stand and ready to receive fuel | Both aircraft and tanker enter `Refueling`; fuel transfers gradually through WorldState | Agreed in discussion; hose connection/equipment preparation are included in overall service time, without a separate setup state |
-| 3A: `Refueling -> ToAircraft` (D-014) | Current service finished and equipment disconnected; next request exists; aviation fuel covers that entire request; diesel covers travel, service and protected return; pump petrol covers pumping with reserve (D-021) | Travel directly to the next aircraft without visiting a Staging Point | Agreed in discussion; final request-closure semantics need Q-05 review; order follows shared queue/override |
-| 3B: `Refueling -> Repositioning` (D-014) | Current service finished and equipment disconnected; no next request | Release aircraft stand and move to a permitted Staging Point | Agreed in discussion; resource and spatial feasibility apply |
-| 4: `Refueling -> ToDepot` (D-015, amended by D-027) | Current service complete; a fuel guard fails for a candidate; assignment review selects replenishment rather than a feasible alternative service | Return directly to depot with protected diesel reserve; a selected alternative uses 3A instead; D-017 restores an unexpectedly lost return capability before travel | Agreed for all shortage combinations; no unconditional return merely because one candidate fails |
-| Standby relief (D-016, clarified by D-026) | Active vehicle needs depot replenishment | Dispatch the full Standby to field parking via transition 13; after arrival use transition 1 for eligible aircraft service | Agreed; replacement departure does not wait for a check window; current service remains uninterrupted |
-| 5: `ToDepot -> Loading` (D-018) | Actual arrival at Fuel Depot for required replenishment | Start timed depot operations; simultaneous arrivals use first-to-aviation/second-to-auxiliary order, then the second uses aviation after the first completes and leaves/parks | Agreed in discussion; one vehicle per post, actual operation/movement/wait durations; numerical rates and other visit-policy details remain open |
-| 6: `Loading -> Idle` (D-019) | Required replenishment complete; no assigned request; actual arrival at depot parking | Become available at depot parking, which holds both vehicles | Agreed; internal parking movement remains Loading; D-030 permits direct assignment before parking arrival |
-| 7: `Loading -> ToAircraft` (D-020/D-030) | Required replenishment complete; valid eligible request assigned; all three fuel and route/readiness/time checks pass from actual position, including during movement to depot parking | Depart or redirect directly to the aircraft without parking arrival, a parking stop or Idle | Agreed; full tanks not required; incomplete replenishment or failed guards do not authorise departure |
-| 8: `Repositioning -> Idle` (D-022) | Actual arrival and stop at the permitted waiting location; no service assigned | Complete route, record location and become available | Agreed; depot parking remains transition 6 |
-| 9: `Repositioning -> ToAircraft` (D-023) | Valid eligible assignment; all guards pass from actual current position; not the D-026 replacement's mandatory depot-to-field-parking trip | Redirect immediately to the aircraft without reaching the waiting point or inserting Idle | Agreed; D-026 coverage replacement must complete parking arrival first |
-| 10: `Idle -> Repositioning` (D-024) | At Staging Point for more than one hour, unassigned, no flight's fuel-check window opening in the next hour | Move to Main Parking; otherwise remain Idle and reassess on events | Agreed; schedule additions/changes and fuel-check windows trigger reassessment |
-| 11: `Idle -> ToDepot` (D-025, amended by D-027) | Waiting vehicle fails a candidate fuel guard and assignment review selects replenishment | Return with protected reserve; coordinate second-vehicle field coverage under D-026 | Agreed; feasible alternative work can retain it on the field |
-| 12: `Repositioning -> ToDepot` (D-025, amended by D-027) | Same reviewed replenishment decision while moving to a waiting location | Redirect from actual position to depot; a feasible service alternative uses transition 9 instead | Agreed; protected return and D-017 apply |
-| 13: `Idle -> Repositioning` (D-026/D-027, depot Standby) | Fully replenished second vehicle is needed for coverage replacement or the selected two-vehicle field plan | Send it from depot to field parking before aircraft service; no aircraft request/window required for this movement | Agreed; actual arrival uses transition 8; both vehicles may remain on the field; minimum coverage preserved |
-| `ToAircraft -> ToAircraft / Repositioning / ToDepot` (D-033) | Before-service request cancelled or changed; D-027 review selects the next feasible action | Redirect to a valid service, a waiting location or selected replenishment from actual position/stocks | Agreed; schedule change alone does not cancel; all fuel/coverage guards apply |
-| Aircraft-service `Refueling -> Refueling` on cancellation/revision (D-034) | Service already started; manual cancellation attempt or external withdrawal/flight cancellation/change arrives | Keep the original committed service conditions and finish delivery; reject manual cancellation | Agreed; Q-14 technical-fault handling is separate; afterwards use normal tanker branching |
-| Protected-return diesel deficit `-> Alert` (D-032, recipient) | Unexpectedly insufficient diesel to reach depot with reserve | Wait at actual location, unavailable for aircraft work; await second vehicle if it is busy | Agreed; normal guards still prevent this during routine operation |
-| Available donor `-> Repositioning` (D-032) | Its current work is finished; assistance assigned and approach/donation/both-return fuel checks pass | Travel directly to the recipient as an assistance task | Agreed; otherwise use the donor's depot-replenishment branch |
-| Donor `-> ToDepot -> Loading` before assistance (D-032) | Post-work stocks cannot cover approach, donation and both protected returns; own depot trip is feasible | Visit depot first and replenish tractor diesel and trailer aviation fuel; independently check pump petrol | Agreed; recipient remains Alert throughout actual travel/loading time |
-| Donor `Loading -> Repositioning` (D-032) | Required replenishment complete; assigned assistance retained; repeated donor checks pass | Depart directly to recipient without depot/field parking or Idle | Agreed; assistance destination differs from D-026 aircraft-coverage parking |
-| Donor Repositioning / recipient Alert `-> Alert Refueling` (D-032/D-038) | Actual assistance arrival and setup complete | Transfer tractor diesel with explicit donor/recipient roles and elapsed time | Agreed; no aviation-fuel or aircraft-state side effects |
-| Alert Refueling `-> ToDepot` (D-032/D-038, recipient) | Transfer complete; protected return restored | Recipient returns directly to Fuel Depot | Agreed; no intervening aircraft assignment |
-| Alert Refueling `-> ToAircraft / Repositioning / ToDepot` (D-032/D-038, donor) | Transfer complete; actual stocks rechecked; next action selected | Serve a feasible aircraft, move to field waiting or replenish | Agreed; D-027 review and fuel/reserve/eligibility guards apply |
-| `ToDepot -> Maintenance` (D-031/D-035) | Planned withdrawal or detected-fault return; actual arrival at depot maintenance area | Enter maintenance; faulty vehicle was already unavailable throughout return | Agreed; spatial/completion evidence and durations to specify |
-| Current state `-> ToDepot` after detected fault (D-035) | Fault detected; current operation stopped/released; mobility and protected-return diesel checks pass | Withdraw immediately, mark technically unavailable/Alert!, return for Maintenance | Agreed for all selected technical faults; no completion of current delivery |
-| Current state `-> Alert` after movement-preventing fault (D-035) | Fault prevents self-propelled return | Remain unavailable at actual location rather than simulate travel | Selected event/recovery scope remains Q-14; no towing implied |
-| `Maintenance -> Loading` (D-031) | Repair complete/readiness confirmed; at depot and needs replenishment | Start necessary timed depot operations | Agreed; no implicit stock reset |
-| `Maintenance -> ToAircraft` (D-031) | Readiness confirmed; valid eligible assignment and all guards pass from actual location | Direct aircraft dispatch | Agreed; D-026 coverage replacement still uses field parking |
-| `Maintenance -> Idle` (D-031) | Readiness confirmed; no service assignment; stationary at a permitted location | Available for planning | Agreed; maintenance-area exit/parking geometry remains to specify |
+The following records reviewed behaviour in the D-043 vocabulary. It is not a
+complete new transition matrix. Retained IDs identify behaviour/provenance,
+including where a former Loading transition now spans explicit post/movement states.
 
-The D-014 diesel guard includes enough fuel for reaching the next aircraft,
-servicing it and then returning to Fuel Depot with a minimum reserve. Numerical
-consumption, reserve and pumping-energy assumptions are still open. The D-016
-rotation agreement assumes tractor diesel can be replenished at the Fuel Depot;
-the post is now specified by D-018/D-021, while timing and the consumption model
-remain open (Q-07). D-021 adds independent pump-petrol guards to **every**
-aircraft-service assignment, including transitions 1, 3A and standby relief.
-Current refuelling is not interrupted merely because another request gains priority.
+| Transition | Trigger and result | Status and limits |
+| --- | --- | --- |
+| 1: Idle -> ToAircraft (D-011) | Eligible assignment, all three resource and route/readiness/time guards pass | Agreed; shared queue and Q-13 authorisation |
+| 2: ToAircraft -> Refueling (D-012) | Actual arrival, aircraft ready, service starts including setup | Agreed; balances change with actual transfer |
+| 3A: Refueling -> ToAircraft (D-014/D-041) | Current delivery complete, equipment disconnected, next feasible assignment | Direct next service; no mandatory waiting stop |
+| 3B: Refueling -> Repositioning (D-014/D-041) | Service released, no selected next service or replenishment | Travel to field waiting; Idle only on arrival/stop |
+| 4: Refueling -> ToDepot (D-015/D-027) | After release, assignment review selects replenishment | Protected return and coverage; not automatic after one failed candidate |
+| 5: Depot arrival -> required post (D-018/D-043) | Actual arrival/routing; RefillTank or RefillServiceFuel begins at its available post, with Repositioning for internal travel | Timed exclusive posts, agreed simultaneous-arrival order and coordination waits |
+| 6: Completed replenishment -> Repositioning -> Standby (D-019/D-043) | No task; all three stocks full, technically ready; actual reserve-parking arrival/stop | Internal depot travel takes time and no diesel; no Idle insertion |
+| 7: Completed replenishment / parking-bound Repositioning -> ToAircraft (D-020/D-030/D-043) | Valid assignment and all guards pass after operations/release | Partial stocks permitted; no reserve-parking arrival or Standby required |
+| 8: Repositioning -> Idle (D-022) | Actual arrival/stop at field waiting, no service assignment | Depot reserve parking uses Standby instead |
+| 9: Ordinary field Repositioning -> ToAircraft (D-023) | Eligible feasible assignment from actual position/stocks | Immediate redirection; D-026 parking-first replacement exception retained |
+| 10: Idle -> Repositioning (D-024) | Staging Point dwell exceeds one hour and no check window in next hour | Move to Main Parking; reassess on schedule/check events |
+| 11/12: Idle or field Repositioning -> ToDepot (D-025/D-027) | Assignment review selects replenishment for known demand | Protected return and coordinated field relief |
+| 13: Standby -> Repositioning (D-026/D-027/D-043) | Coverage replacement or selected two-vehicle field plan | No aircraft request needed for parking trip; actual field-parking arrival precedes service |
+| ToAircraft -> ToAircraft / Repositioning / ToDepot (D-033) | Unstarted request cancelled/revised; fleet review selects next action | Retain actual position, elapsed time and stocks |
+| Refueling retained on cancellation/revision (D-034) | Running commitment continues original delivery | Reject manual interruption; D-044 faults/shortage stop service |
+| Protected-return deficit -> Alert (D-017/D-032) | Unexpectedly insufficient diesel for protected return | Unavailable recipient waits; busy donor finishes current work |
+| Available donor -> Repositioning (D-032) | Assistance feasible for approach, donation and both protected returns | Otherwise prepare at depot first |
+| Donor -> ToDepot -> required replenishment (D-032/D-043) | Own depot trip feasible, but assistance needs replenishment | Replenish diesel and aviation fuel, check petrol separately; recipient remains Alert |
+| Prepared donor -> Repositioning towards recipient (D-032/D-043) | Required depot operations complete, repeated checks pass | No depot/field parking or intervening aircraft task |
+| Donor Repositioning / recipient Alert -> Alert Refueling (D-032/D-038) | Actual assistance arrival/setup | Explicit diesel transfer, elapsed time and donor/recipient balances |
+| Recipient Alert Refueling -> ToDepot (D-032) | Transfer complete; protected return restored | Direct depot return; no aircraft service before return |
+| Donor Alert Refueling -> ToAircraft / Repositioning / ToDepot (D-032) | Recheck all three actual stocks and next task | Assignment, waiting or replenishment under reviewed guards |
+| Mobile technical fault -> ToDepot -> Maintenance (D-035/D-044) | Stop/release work, retain unavailability and partial delivery; actual repair-area arrival | Selected tyre/pump cases; return requires mobility and diesel |
+| Pump-petrol exhaustion -> ToDepot -> replenishment (D-044) | Stop service, aircraft Alert, retain request/remainder | Operational shortage; no automatic Maintenance |
+| Maintenance -> required replenishment / ToAircraft (D-031/D-043) | Repair complete, actual stocks checked; assignment if feasible | No implicit refill; no-task route reaches full reserve parking before Standby |
+
+D-042 quantifies the diesel/petrol guards; zero diesel in aircraft Refueling and
+internal depot travel does not remove travel time or road-return reserves.
+Aircraft-service interruption, Completed and actual readiness remain independent
+of tanker destination. The remaining full matrix, waits, release/event ordering
+and urgent replacement route are still requirements work.
 
 ## Open questions and next steps
 
@@ -890,26 +894,26 @@ Current refuelling is not interrupted merely because another request gains prior
   Point policy, direct assignment during Repositioning and proactive shortage
   return/relief. Detail waiting-location geometry/selection, field boundary,
   readiness criteria and handover timing that preserves physical field coverage.
-  D-030 closes direct assignment during the Loading movement to depot parking;
+  D-030/D-043 retain direct assignment during parking-bound Repositioning after
+  depot operations are complete;
   simultaneous-event ordering remains under Q-02.
 - **Q-05:** Eight aircraft states, T1–T10, current-flight check gating and the
   D-039 cancellation exception are agreed. Define request/commitment identities,
-  final-check/closure/teardown ordering and atomic updates; cancellation after
+  remaining closure/release ordering and atomic updates; cancellation after
   replacement arrival but before resumption; replacement without explicit
   cancellation while Alert; cancellation during running service followed later
   by a fault; and the boundary for a fault after the full uplift
   but before service release. Cancellation outside the reviewed parked/service
   cases is not implicitly approved. Define assistance requests separately.
-- **Q-06/Q-07 dependencies:** Define the resource guards required by each
-  reviewed transition using the agreed depot replenishment capability, without
-  guessing units, reserve values, stock quantities or replenishment rates.
+- **Q-06/Q-07 dependencies:** Apply D-042's selected litre-valued profile,
+  reserves and movement/pumping assumptions. Define aircraft conversion/profile
+  details, tolerances, depot rates, setup/engine allowances and remaining visit rules.
 - **Q-13 dependency:** Define which dispatch/replanning actions are automatic and
   where confirmation or intervention applies without changing physical guards.
-- **Q-14:** Select the synthetic fault catalogue, mobility effects, concrete
-  repair/completion evidence, durations and urgent replacement route exceptions.
-  D-031/D-035 already fix immediate faulty-vehicle withdrawal, ToDepot return
-  when mobile and Maintenance on arrival. Movement-preventing events/recovery
-  require separate scope; pump failure remains a candidate event.
+- **Q-14:** D-044 selects the tyre/pump/petrol-exhaustion cases and excludes
+  service-time diesel exhaustion. Define event timing, concrete repair-completion
+  evidence/durations and urgent replacement routes; additional movement-exhaustion
+  or immobile technical recovery is not silently added. D-017/D-032 remain retained.
 
 For further review, follow the sequence in the [resume checkpoint](README.md#resume-checkpoint).
 Only extend a state table or its diagram after the corresponding behaviour is

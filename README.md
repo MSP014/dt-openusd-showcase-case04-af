@@ -6,7 +6,7 @@
 ---
 
 > **Role:** Synthetic-data-driven L2-style Decision-Support Prototype
-> **Planned pipeline:** SideFX Houdini → OpenUSD → NVIDIA Omniverse; NVIDIA cuOpt for constrained route planning
+> **Planned pipeline:** SideFX Houdini → OpenUSD → application-owned runtime integrating NVIDIA Omniverse Libraries; NVIDIA cuOpt for constrained route planning
 
 ---
 
@@ -17,11 +17,15 @@ This project is developing a **Synthetic-data-driven L2-style Decision-Support P
 **Current implementation — Under Development:** `src/` contains a placeholder, and `tests/test_dummy.py` is an infrastructure smoke test, not logistics validation. The repository currently provides working requirements, environment/dependency setup and development/reference utilities. It does not yet provide a working routing solver, synthetic-data generator or interactive logistics runtime.
 
 **Key Use Case:**
-**Planned:** Two identical KrAZ-221 + TZ-22 refuellers alternate active/standby duty to serve a schedule with **three aircraft on stands, two inbound flights and a possible sixth unscheduled arrival**. The system is intended to plan feasible service sequences and ground routes using departure/service deadlines, arrival readiness, travel distances, service times and three independent refueller stocks: aviation fuel, tractor diesel and petrol for the separate pump engine. Planned HUD overlays will expose assignments, fuel and reasons for replanning.
+**Planned:** Two refuellers use KrAZ-221 + TZ-22 visual assets with a deliberately separate KrAZ-258B1 + TZ-22 operational profile and alternate field/Standby duty to serve a schedule with **three aircraft on stands, two inbound flights and a possible sixth unscheduled arrival**. The system is intended to plan feasible service sequences and ground routes using departure/service deadlines, arrival readiness, travel distances, service times and three independent refueller stocks: aviation fuel, tractor diesel and petrol for the separate pump engine. Planned HUD overlays will expose assignments, fuel and reasons for replanning.
 
 Two refuellers are required, including for fault tolerance. Planned normal operation must retain at least one operationally ready refueller physically on the airfield. Replenishment of the active vehicle requires dispatching its full depot replacement to field parking independently of aircraft-request timing; it first arrives there, then serves an eligible aircraft after its check window opens and all assignment guards pass. Handover timing must preserve field coverage. Normal fuel checks must preserve enough tractor diesel to return to the depot with reserve. If a vehicle nevertheless cannot reach it, the second must transfer enough diesel from its own tractor tank to restore that return while retaining its own return reserve. This recovery capability is planned; its equipment, timing and detailed lifecycle remain under requirements review.
 
 Planned depot operations use two posts: aviation-fuel loading and an auxiliary post with separate diesel and pump-petrol dispensers. Each post holds one vehicle. Simultaneous arrivals follow an agreed first-to-aviation/second-to-auxiliary sequence; after the first completes required replenishment and departs or proceeds to parking, the second uses the vacated aviation post. Operations, movement and any necessary coordination waits take time; separate depot parking holds both refuellers. Assigned departure requires sufficient stocks for the job and reserves, rather than full tanks. See the [depot transition requirements](docs/plans/requirements/domain_and_state_machines.md#depot-loading-and-departure).
+
+The adopted [simulation profile](docs/plans/requirements/reference_profiles.md#adopted-simulation-profile-d-042) uses 22,000 L aviation fuel, 330 L tractor diesel and a conditional 90 L pump-petrol tank, with 12.5% diesel/petrol reserves. Pumping uses a separate petrol engine; tractor diesel consumption is zero during aircraft refuelling and, by deliberate simplification, internal depot moves. Internal travel still takes time. These selected model values do not establish verified historical equipment performance. Explicit `RefillTank` / `RefillServiceFuel` states and internal `Repositioning` replace `Loading`; depot `Standby` requires technical readiness, completed operations, all stocks full and actual reserve-parking arrival. Field waiting remains `Idle`.
+
+Normal full delivery closes the original fuel request as `Completed` and makes an unchanged eligible flight's aircraft `Ready`, without repeating its demand calculation. Equipment release still guards actual movement. Requests and actual transfer history are retained through interruption and executor changes; a replacement supplies only the valid remainder. Selected exception requirements cover a mobile tyre-puncture case in `Repositioning`, pump failure and pump-petrol exhaustion during `Refueling`; service-time diesel exhaustion is excluded. The [reviewed lifecycle](docs/plans/requirements/domain_and_state_machines.md#normal-completion-and-request-history-d-041) remains to be implemented.
 
 The reviewed aircraft model has eight states: `Expected`, `Inbound`, `Parked`, `Refueling`, `Alert`, `Ready`, `Departing` and `Departed`. Running refuelling retains its agreed delivery despite flight cancellation; a technical fault stops it. If that flight is cancelled while the aircraft waits in Alert before replacement arrival, the undelivered obligation is cancelled and the aircraft returns to Parked with its actual fuel retained. A new flight uses its own fuel-check window. These are [requirements](docs/plans/requirements/domain_and_state_machines.md#aircraft-lifecycle), not an implemented runtime.
 
@@ -37,9 +41,21 @@ Automatic dispatch is a required capability of the planned system. Operator conf
 
 Earliest Deadline First (EDF) is the planned simple baseline. It may already meet departure deadlines in straightforward cases. The additional fleet objective is to **reduce total refueller travel and estimated diesel cost while satisfying the same service and resource constraints**, jointly choosing **which refueller serves each aircraft, service order and when to replenish**. A failed fuel check for one candidate first triggers assignment review: a vehicle carrying 10 tonnes may retain a feasible 8-tonne job while the second handles a 12-tonne request. Both may work on the field concurrently; one active vehicle and one depot standby is a default arrangement. A smaller fitting job does not establish savings: compare complete plans for both vehicles, including later depot legs, deadlines and diesel use. Validate any cuOpt benefit against EDF under the same rules. See the [assignment-review requirements](docs/plans/requirements/planning_and_operator_workflow.md#assignment-review-and-two-refueller-field-operation-d-027).
 
-The planned comparison uses the same revealed schedule/events, two-refueller fleet and rotation rules, road graph, three-stock fuel/service model and feasibility checks for EDF and cuOpt. It will report deadline performance, served demand, total distance and diesel consumption/cost across both refuellers, pump petrol separately, depot visits and calculation overhead. With at most six flights, GPU necessity and a cuOpt advantage are unproven; equal or worse results must be reported. See the [benchmark requirements](docs/plans/requirements/scenarios_and_validation.md#earliest-deadline-first-comparison).
+The adopted planning horizon covers one or two nearest known requests, retaining the complete known queue and excluding hidden future events. The nearest/selection/spillover rules still require review. The planned comparison uses the same revealed schedule/events, two-refueller fleet and rotation rules, road graph, three-stock fuel/service model and feasibility checks for EDF and cuOpt. It will report deadline performance, served demand, total distance and diesel consumption/cost across both refuellers, pump petrol separately, depot visits and calculation overhead. With at most six flights, GPU necessity and a cuOpt advantage are unproven; equal or worse results must be reported. See the [benchmark requirements](docs/plans/requirements/scenarios_and_validation.md#earliest-deadline-first-comparison).
 
 ### Synthetic data and maturity
+
+The planned input-source boundary reserves interfaces/placeholders for future
+real airport data adapters. Only the Synthetic Data Provider is in scope for
+this case; implementing live-system bridges is outside scope. Both source types
+would supply the same reviewed input contract, with changes applied through the
+state/execution owner rather than directly through scene attributes.
+
+Aircraft and refueller positions will use synthetic GPS-like coordinates,
+consistent with their simulated movement relative to stands, depot and other
+airfield infrastructure. They are simulated telemetry, not recorded GPS tracks
+or a live location feed. The mapping to the metre-scale USD scene must be
+explicit. See [D-047](docs/plans/requirements/architecture.md#input-sources-and-synthetic-position-telemetry-d-047).
 
 Synthetic inputs are a deliberate development trade-off. This project has no operational data feed from an airport such as Zvartnots; obtaining and validating such data would require cooperation, access agreements and integration work. Reproducible scenarios allow the resource accounting, routing decisions, state transitions and presentation to be developed and tested without that dependency.
 
@@ -69,6 +85,8 @@ This project follows a **README-driven structure** to manage the complexity of h
 
 - [**View Architecture Decision Records (ADR)**](docs/adr/) – Design notes on Naming Conventions, Security Guardrails, and VRP Logic integration.
 - [**Fuel Logistics Requirements**](docs/plans/requirements/README.md) – Working requirements, document status, recorded decisions and next review steps. The synthetic-data provider, fuel model, cuOpt integration and operator workflow remain proposed; the requirements do not establish an implemented runtime.
+- [**C4 Architecture and Module Map — Draft**](docs/architecture/case04_c4_architecture.md) – Application boundaries, internal modules and data/command flows; review this map before deriving implementation order.
+- [**Persistence and Data Storage — Draft**](docs/plans/requirements/persistence_and_storage.md) – Proposed MySQL core/telemetry/analytics/settings separation, durable state/history, versioned module configuration and recovery requirements.
 - [**Omniverse Reference Clients**](tools/mcp/README.md) – Local Kit, OpenUSD and OmniUI query clients for development and reference work, separate from the logistics runtime.
 
 ## 📂 Repository Structure
@@ -129,7 +147,7 @@ To keep this repository lightweight, heavy binary assets (USD Crates, Textures, 
 - **USD**: 23.11+
 - **Standalone OpenUSD bindings**: `usd-core==26.11` (`pxr`, Python 3.11)
 - **Houdini FX**: 22.0.466
-- **NVIDIA Omniverse / Isaac Sim**: 5.1.0 planned presentation/runtime baseline; logistics integration pending
+- **NVIDIA Omniverse Libraries**: Planned standalone integration in our own application under D-046; `ovstage` and `ovrtx` are the initial scene/rendering candidates, with final versions and compatibility pending the prototype
 - **NVIDIA cuOpt**: Planned VRP solver evaluation; interface, integration and benchmark results pending
 
 ---

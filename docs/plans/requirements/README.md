@@ -2,9 +2,9 @@
 
 **Status:** Working drafts; requirements review in progress
 
-**Last updated:** 1 November 2026 (Asia/Yerevan)
+**Last updated:** 11 November 2026 (Asia/Yerevan)
 
-**Source discussions:** 28 October–1 November 2026
+**Source discussions:** 28 October–1 November and 11 November 2026
 
 **Implementation status:** This collection describes intended behaviour. It does
 not establish a working provider, fuel model, priority engine, cuOpt integration
@@ -31,11 +31,24 @@ No library integration or change to the Python baseline is claimed.
 
 **Point 0 — input-source seam (D-047):** The Synthetic Data Provider supplies
 the implemented scenario inputs. Reserve a common input contract and
-interfaces/placeholders for future real-data adapters; actual airport-system
-bridges are outside scope. Aircraft/refueller positioning imitates GPS using
+interfaces/placeholders for future real-data adapters; implementing those adapters
+and their airport-system connectors and bridges is outside scope. Placeholders
+do not ingest or transform real data. Aircraft/refueller positioning imitates GPS using
 synthetic coordinates tied to the same airfield/infrastructure frame, not
 recorded or live GPS data. See the [primary decision](architecture.md#input-sources-and-synthetic-position-telemetry-d-047)
 and the [C4 module-map draft](../../architecture/case04_c4_architecture.md).
+
+**11 November clarification:** M0 supplies scenario events and synthesises
+source-like position observations from the same committed simulated movement.
+Both pass through the common input boundary; returning an observation must not
+apply the movement twice. Future real observations would need an explicit
+position-authority and reconciliation policy; real adapters remain out of scope.
+See the [scenario/observation contract](architecture.md#scenario-inputs-and-synthetic-observations--11-november-clarification).
+
+The [shared airfield georeference](architecture.md#shared-airfield-georeference)
+will version the relationship between a geographic reference point, local scene
+position and orientation. Synthetic observations use that effective mapping;
+numerical coordinates and conversion details remain open.
 
 The scope covers aircraft fuel requests, refueller movements and replenishment
 at one aviation-fuel depot. It excludes baggage, catering, passenger handling,
@@ -99,6 +112,7 @@ decision statuses recorded in the source notes; restructuring is not approval.
 | This README | Decisions through D-047 and current continuation recorded | Keep register/status/checkpoint aligned | All topic documents |
 | [C4 architecture and module map](../../architecture/case04_c4_architecture.md) | Proposed application boundaries, internal modules and information flow drawn | Review the module map before deriving implementation dependencies/order | D-001/D-046/D-047 and the topic contracts |
 | [Persistence and data storage](persistence_and_storage.md) | Core/telemetry/analytics/settings databases proposed; primary settings DB and critical bootstrap copies recorded | Agree Q-16 persistence, recovery, settings validation/activation and admin contracts | Q-01/Q-02/Q-05 state/time/identity, Q-10/Q-11 bindings and Q-13 activation policy |
+| [Spatial-network administration](spatial_network_administration.md) | Separate Spatial Network Manager selected; requirements and interfaces remain drafts | Review Q-17 module interfaces, first increment and safe network revision lifecycle | Q-01/Q-02/Q-09/Q-11/Q-13/Q-15/Q-16 |
 | [Architecture](architecture.md) | State ownership, D-046 library direction and D-047 source/GPS seam recorded | Resolve Q-01/Q-02/Q-13, specify source/coordinate contracts and evaluate Q-15 candidates | Domain, event/time, spatial bindings and prototype evidence |
 | [Domain and state machines](domain_and_state_machines.md) | Eight aircraft and eleven tanker states; normal Completed/history and selected interruption cases recorded | Complete Q-05 identities/release boundaries and full D-043 transition matrix; detail Q-03/Q-04/Q-14 | Resource guards, events, field coverage |
 | [Fuel and service model](fuel_and_service_model.md) | Litre-valued refueller profile, pumping/movement model and 12.5% reserves adopted; three independent stocks retained | Aircraft conversion/tolerances, depot/setup rates, pump use at depot and remaining Q-06/Q-07 | Profiles, lifecycle, assistance |
@@ -114,8 +128,8 @@ drafts and do not establish a runtime, solver integration or measured benefit.
 
 **D-047 — implementation point 0:** Define the common source-input contract and
 future real-data adapter placeholders before the synthetic implementation.
-Actual bridges are outside scope. Simulated GPS-like aircraft/refueller
-positions must remain consistent with WorldState, infrastructure and the
+Real-data adapter implementations and bridges are outside scope. Simulated
+GPS-like aircraft/refueller positions must remain consistent with WorldState, infrastructure and the
 scene-coordinate mapping. First review the
 [C4 module map](../../architecture/case04_c4_architecture.md), then derive an
 implementation order. The earlier construction-order proposal is withdrawn;
@@ -302,7 +316,7 @@ Each has one primary home; other documents link to that definition.
 | D-044 | Tyre/pump/petrol-exhaustion cases selected; service-time diesel exhaustion excluded; D-017/D-032 retained | [Selected catalogue](domain_and_state_machines.md#q-14-selected-fault-catalogue-and-interrupted-service-d-044) |
 | D-045 | Agreed: one/two-known-request horizon, full queue retained and hidden future excluded; nearest/selection/spillover rules open | [Bounded planning](planning_and_operator_workflow.md#bounded-planning-and-information-visibility-d-045) |
 | D-046 | Direction agreed on 1 November; candidate libraries and final runtime stack require prototype evidence under Q-15 | [Standalone Omniverse library direction](architecture.md#standalone-omniverse-library-direction-d-046) |
-| D-047 | Agreed on 1 November: common source contract, future real-adapter placeholders only, synthetic GPS-like positioning; actual real-system bridges excluded | [Input sources and synthetic position telemetry](architecture.md#input-sources-and-synthetic-position-telemetry-d-047) |
+| D-047 | Common source contract, future real-adapter placeholders only and synthetic GPS-like positioning; real-data adapter implementations and bridges are outside scope | [Input sources and synthetic position telemetry](architecture.md#input-sources-and-synthetic-position-telemetry-d-047) |
 
 ## Open review register
 
@@ -328,6 +342,7 @@ live in the owning document; this register provides a single continuation index.
 | Q-14 | Timing, repair evidence/durations and urgent replacement route for D-044's selected events; further movement-exhaustion/immobile recovery separately scoped; field-parking bypass open | [Selected fault catalogue](domain_and_state_machines.md#q-14-selected-fault-catalogue-and-interrupted-service-d-044) |
 | Q-15 | Which library releases, Windows/GPU/driver/Python combination, scene/lifecycle bridge, viewport/UI/HUD and deployment meet D-046's prototype gate before final stack selection? | [Architecture](architecture.md#standalone-omniverse-library-direction-d-046); [proof criteria](scenarios_and_validation.md#library-integration-proof-d-046) |
 | Q-16 | Which database split, transaction/recovery and sampling rules preserve state/history, and which settings schemas, bootstrap precedence, revision/admin and activation rules govern module configuration? | [Persistence and storage](persistence_and_storage.md) |
+| Q-17 | How do Spatial Network Manager and existing components divide interfaces and validation; what is the initial scope and how are moving vehicles, commitments, stale plans and historical versions handled? | [Spatial-network administration](spatial_network_administration.md) |
 
 ## Source coverage and existing contracts
 

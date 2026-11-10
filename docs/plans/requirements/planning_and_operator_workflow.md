@@ -282,6 +282,18 @@ or guarantee constraints omitted from its input. Validate the resulting plan
 against the adopted physical and lifecycle contracts. A feasible solution is not
 proof of global optimality; compare measured outcomes with a fixed reference.
 
+## Proposed network changes and planning (Q-17)
+
+The [network administration draft](spatial_network_administration.md) proposes
+controlled activation of an edited ground network. A draft is not planning input
+for normal execution. Associate each proposal and accepted route with the
+effective network and state revisions used for its calculation. On activation,
+apply the reviewed policy to affected vehicles and commitments, and revalidate
+or recalculate as needed. An obsolete result must not be silently executed or
+displayed as current; failed or infeasible replanning needs an explicit outcome.
+The activation mechanism, event order and safe disposition remain Q-01/Q-02/
+Q-09/Q-13/Q-17, not established solver behaviour.
+
 ## Replanning and committed actions
 
 The architecture proposal uses event-driven rolling-horizon planning, with an

@@ -25,8 +25,10 @@ consistent core state; its historical samples belong in `af_telemetry`.
 Duplicating a value into a telemetry sample or report does not give it a second
 independent update owner. Analytics must not write back authoritative stocks.
 
-USD geometry, textures and other heavy visual assets remain files. Scenario,
-graph and other input datasets may remain versioned files selected by settings.
+USD geometry, textures and other heavy visual assets remain files. Scenario and
+other input datasets may remain versioned files selected by settings. Spatial
+Network Manager owns graph revision lifecycle; graph storage and its coordination
+with settings are subject to Q-17.
 Primary module settings belong in `af_settings`. Preserve effective values or
 immutable revision references in each run's core state so later admin edits
 cannot alter the meaning of historical data.
@@ -59,6 +61,22 @@ An edit cannot rewrite completed transfers, historical coordinates, an active
 delivery obligation or an existing flight's ETD. Retain previous settings
 versions for recovery/replay. Exact activation/restart rules remain Q-13/Q-16.
 
+## Proposed network revisions (Q-17)
+
+The [network administration draft](spatial_network_administration.md) proposes
+durable draft, validated, pending and effective network revisions, their
+validation dependencies and activation history. Spatial Network Manager owns
+the network revision lifecycle; Settings Manager owns module-setting revisions.
+Their coordination and persistence interfaces remain open. Do not assume network
+geometry is stored in `af_settings`, or that a versioned file alone provides
+atomic activation.
+
+Preserve the effective network and compatible layout, permitted-area, coordinate
+reference and vehicle-profile versions alongside run/state and historical route
+evidence. Recovery and rollback must restore or activate a coherent combination
+under the same safety policy. Define draft persistence, concurrent edits,
+publication/activation atomicity and ambiguous-outcome readback under Q-16/Q-17.
+
 ## Persistence module and transaction boundary
 
 Add an explicit Persistence / Data Access module to the architecture. The
@@ -85,6 +103,11 @@ Do not report Completed or advance to a newly accepted state after a failed
 commit. Ambiguous commit outcomes require identification/readback rather than
 repeating a fuel transfer blindly.
 
+The operator UI queries History Recorder for archived requests, service history
+and past movements. Recorder uses Persistence to read the stored records and
+returns historical results with their run/entity/time/revision identity; the
+UI does not query databases directly or apply historical results to live state.
+
 History recording passes through this persistence boundary. Records of input,
 rejected commands and solver results must remain distinguishable from actual
 applied changes. Derived analytics can be updated separately and reconstructed;
@@ -101,6 +124,22 @@ Position history needs entity/run identity, simulation time, recording time,
 coordinate reference and source provenance. Synthetic samples must agree with
 the same WorldState movement and infrastructure mapping under D-047. Preserve
 the relevant airfield/graph/reference versions so past samples retain meaning.
+
+The shared airfield georeference includes the geographic/local reference-point
+mapping, orientation, units and selected horizontal/vertical references. Retain
+the effective version and enough immutable content or resolvable history with
+each run and observation to interpret prior positions after settings change.
+Storage and reference-change activation/recovery remain Q-11/Q-16/Q-17; do not
+silently apply a new mapping to recorded samples.
+
+History Recorder owns periodic position sampling without a separate Telemetry
+Sampler module. WorldState supplies committed position/state snapshots and the
+Simulation Clock supplies due sampling instants; Settings Manager provides the
+effective sampling configuration. Preserve each source revision and simulation
+time alongside recording time. A due trigger must not relabel an older snapshot
+as a position at the trigger's time. Sampling/event ordering remains
+Q-01/Q-02/Q-16; periodic samples do not replace coherent core-state commits or
+any matching telemetry sample required within their transaction boundary.
 
 Select telemetry sampling/checkpoint frequency separately from render FPS and
 declare the maximum permitted unsaved tail. Significant arrival, stopping,
@@ -133,6 +172,8 @@ and [backup/recovery guidance](https://dev.mysql.com/doc/refman/8.4/en/backup-st
   Q-05 retains request/commitment identity and atomic domain outcomes.
 - Q-10/Q-11 retain field/metric meanings and spatial/profile bindings. Storage
   placement must not silently choose their unresolved semantics.
+- Q-17 covers network revisions, validation dependencies and safe activation and
+  recovery without deciding their physical storage.
 
 Database schemas, repositories, configuration administration and recovery remain
-unimplemented. Real airport-system bridges are outside the agreed scope.
+unimplemented. Real-data adapters and airport-system bridges are outside scope.

@@ -47,7 +47,8 @@ The adopted planning horizon covers one or two nearest known requests, retaining
 
 The planned input-source boundary reserves interfaces/placeholders for future
 real airport data adapters. Only the Synthetic Data Provider is in scope for
-this case; implementing live-system bridges is outside scope. Both source types
+this case; implementing real-data adapters, connectors or live-system bridges
+is outside scope. Both source types
 would supply the same reviewed input contract, with changes applied through the
 state/execution owner rather than directly through scene attributes.
 
@@ -85,6 +86,8 @@ This project follows a **README-driven structure** to manage the complexity of h
 
 - [**View Architecture Decision Records (ADR)**](docs/adr/) – Design notes on Naming Conventions, Security Guardrails, and VRP Logic integration.
 - [**Fuel Logistics Requirements**](docs/plans/requirements/README.md) – Working requirements, document status, recorded decisions and next review steps. The synthetic-data provider, fuel model, cuOpt integration and operator workflow remain proposed; the requirements do not establish an implemented runtime.
+- [**Asset Register — Draft**](docs/plans/asset_register.md) – Hero assets and proposed airfield asset groups for layout and production review.
+- [**Spatial Network Administration — Draft**](docs/plans/requirements/spatial_network_administration.md) – Planned separate network-management module, validation and controlled activation; implementation and first-release scope remain open.
 - [**C4 Architecture and Module Map — Draft**](docs/architecture/case04_c4_architecture.md) – Application boundaries, internal modules and data/command flows; review this map before deriving implementation order.
 - [**Persistence and Data Storage — Draft**](docs/plans/requirements/persistence_and_storage.md) – Proposed MySQL core/telemetry/analytics/settings separation, durable state/history, versioned module configuration and recovery requirements.
 - [**Omniverse Reference Clients**](tools/mcp/README.md) – Local Kit, OpenUSD and OmniUI query clients for development and reference work, separate from the logistics runtime.
@@ -154,6 +157,8 @@ To keep this repository lightweight, heavy binary assets (USD Crates, Textures, 
 
 ## 📜 Changelog
 
+- **Week of Nov 9, 2026:** Completed UV unwrapping for the refueller's wheels, including spares.
+- **Week of Nov 2, 2026:** Consolidated the refuelling lifecycle, three-stock resource model and EDF comparison requirements; drafted standalone runtime and storage architecture. Prepared a metre-scale Tu-104B blockout with articulated controls and progressed TZ-22 UVs.
 - **Week of Oct 26, 2026:** Adopted Python 3.11.15 with a reproducible Conda environment, refreshed hash-locked dependencies, enabled standalone OpenUSD inspection and aligned validation tooling.
 - **Week of May 25, 2026:** Resolved the dependency-tooling security lock by updating pip-tools and refreshing the pinned dependencies and validation commands.
 - **Week of Mar 2, 2026:** Designed and implemented a comprehensive 5-part USD Architecture Knowledge Base tailored for logistics and VRP simulation (`docs/knowledge_base/usd_architecture/`), while standardizing repository folder casing (`snake_case`) and resolving pre-commit hook bugs.

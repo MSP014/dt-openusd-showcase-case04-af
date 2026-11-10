@@ -3,11 +3,11 @@
 **Status:** Working draft; state ownership and standalone-library direction
 recorded; component/event contracts and candidate-library validation incomplete
 
-**Last updated:** 1 November 2026
+**Last updated:** 11 November 2026
 
 **Primary decisions:** D-001, D-046, D-047
 
-**Review questions:** Q-01, Q-02, Q-13, Q-15, Q-16; asset-swap dependency Q-11
+**Review questions:** Q-01, Q-02, Q-13, Q-15, Q-16, Q-17; asset-swap dependency Q-11
 
 See the [requirements index](README.md) for decision status, review order and the
 resume checkpoint. Component names and interfaces below are conceptual, not
@@ -17,8 +17,10 @@ implemented Python classes or a final package layout.
 
 | Component | Inputs | Responsibility and outputs | Boundary |
 | --- | --- | --- | --- |
-| Synthetic Data Provider (original Module 0) | Scenario configuration, seed, scripted timeline | Supply initial conditions and time-stamped flight/schedule/readiness events; retain replay inputs | Does not calculate uplift, invent favourable solver results or independently overwrite resource balances |
+| Synthetic Data Provider (original Module 0) | Scenario configuration, seed, scripted timeline, committed simulated position snapshots, clock and spatial mapping | Supply scenario events and synthesise source-like position observations from the same simulated movement; retain replay inputs | Scenario and observation responsibilities are distinct inside M0; does not create another trajectory, reapply movement or mutate WorldState |
 | WorldState and execution/state accounting | Initial conditions, events and accepted actions | Own current entity state, applied movements, fuel transfers and resulting events | The precise event applier and mutation protocol remain open |
+| Airfield Spatial Model | Effective network, layout and coordinate reference | Expose paths, access, distances and spatial mapping to planning, execution and presentation | Provides one effective spatial view; does not publish network drafts |
+| Spatial Network Manager | Admin edit requests, reference geometry, network and profile revisions | Manage network drafts, validation, revision lifecycle and controlled activation requests | Separate planned module; activation and persistence interfaces remain Q-17/Q-16; it does not plan routes or move vehicles |
 | Physical fuel and service constraints (Module 2) | Flight legs, profiles, aircraft fuel, all three refueller stocks and service readiness | Calculate uplift, movement/pumping consumption, timed depot operations, replenishment needs and feasibility diagnostics | Keeps aviation fuel, tractor diesel and pump petrol separate; see the [fuel model](fuel_and_service_model.md) |
 | Delay impact and priority assessment (Module 1) | ETA/ETD, flight/cargo category, readiness, time margin and policy | Produce an explainable internal priority score | Does not determine landing priority; see [planning](planning_and_operator_workflow.md) |
 | cuOpt problem builder and solver integration (Module 3) | Current state, demands, priorities, network, time windows and commitments | Use cuOpt to calculate proposed refueller-to-aircraft assignments, service order, visit routes/timings and feasibility/unserved-demand evidence; translate its result for validation/adoption | Influences actual dispatch through the accepted plan; execution applies resulting WorldState changes |
@@ -36,8 +38,10 @@ of runtime logistics state through this requirements split.
 **Agreed in discussion — 1 November 2026; implementation point 0:** There is
 no connection to real airport systems. Implement the Synthetic Data Provider
 against an explicit input-source contract and reserve interfaces/placeholders
-for future real-data adapters. Writing those real-system bridges, transports
-or integrations is outside the Case 04 implementation scope.
+for future real-data adapters. Implementing the adapters themselves, including
+their real-system connectors, transports and integrations, is outside the
+Case 04 implementation scope. Placeholders do not fetch, transform or supply
+real source data; they reserve the interface for a future implementation.
 
 Both a synthetic provider and a future real adapter must deliver normalised
 events/observations through the same boundary. Define identity, event/sample
@@ -63,6 +67,83 @@ origin without selecting an unreviewed schema or a surveyed real-airport map.
 The [C4 architecture draft](../../architecture/case04_c4_architecture.md)
 shows the source seam alongside the original Module 0–3 roles and the rest of
 the application. Review that module map before deriving an implementation order.
+
+### Shared airfield georeference
+
+Define one effective, versioned spatial reference for the airfield, shared by
+the Spatial Model, Synthetic Data Provider, input normalisation, planning,
+execution, history and presentation as applicable. This is shared configuration,
+not a requirement for a single global file or a new service. Settings Manager
+coordinates effective configuration through the settings/persistence boundary;
+the Spatial Model supplies the reviewed mapping. Data ownership, storage,
+activation and runtime interfaces remain Q-11/Q-16/Q-17.
+
+The reference must identify:
+
+- The geographic position of a selected reference point: latitude, longitude,
+  geodetic coordinate reference/datum and, when used, height with its vertical
+  reference and units. Select a reference such as WGS84 only after review.
+- The corresponding point in the local airfield/USD frame, not necessarily the
+  world origin, and transforms between asset/layout and airfield frames.
+- The local axes, handedness and rotation relative to geographic north/east,
+  including a declared rotation convention. Scene coordinates use metres and
+  Y-up under the existing USD contract; compass orientation remains open.
+- The transformation method, valid spatial extent, precision and treatment of
+  altitude, to be selected and validated against the chosen reference systems.
+
+For synthetic observations, transform the committed simulated position through
+the effective reference into the chosen geographic representation. The source
+position, observation, spatial dataset and active reference must be compatible
+and identifiable by revision. The observation does not move the object again.
+Retain sufficient reference/configuration identity with runs and historical
+observations to interpret earlier results without silently applying a new mapping.
+
+Validate inputs and incompatible frames before activation. A reference change
+can affect positions, networks, routes, history and synthetic outputs; it needs
+a reviewed transition/restart policy. Define handling for invalid or unavailable
+references, rounding, axis order and height conventions. Actual coordinates,
+orientation, datum, conversion library and required accuracy are not selected or
+implemented here. Real adapters and live switching remain outside scope.
+
+### Scenario inputs and synthetic observations — 11 November clarification
+
+Model the external information sources around the twin without introducing a
+second motion simulator. The existing Synthetic Data Provider (M0) has two
+logical responsibilities; this distinction does not require two new modules:
+
+1. **Scenario supply:** define reproducible initial conditions and time-stamped
+   flight, schedule and readiness events. Reveal them through the input boundary
+   according to the simulation clock; do not reveal hidden future events.
+2. **Source-like observations:** derive time-stamped position messages from the
+   same committed simulation snapshots that describe actual aircraft/refueller
+   movement, using the spatial mapping and an explicit source identity. Send
+   these messages through the common input boundary. Synthetic source identities
+   model distinct feeds; they do not imply separate deployable services.
+
+Execution owns simulated movement and publishes the committed WorldState
+position. A generated observation reflects that position, with its source
+revision and measurement time, and is not another movement command. Accepting
+the synthetic observation must not advance motion or apply fuel, service or
+state transitions a second time. The observation and the committed position
+are related evidence, not independent validation of each other. Define cadence,
+latency, uncertainty and stale/missing-sample policy before claiming realistic
+sensor fidelity; exact, zero-delay sampling may serve an initial test if stated.
+
+The input boundary validates and normalises events/observations. Execution
+decides permitted state effects and publishes accepted results; History Recorder
+records committed state and evidence, rather than generating the source feed.
+UI/scene projection consumes accepted state and does not own either motion or
+input. Agree event ordering, source revision, timestamps and loop prevention
+under Q-01/Q-02; resolve the shared reference and GPS mapping under Q-11.
+
+A hypothetical real-data mode would instead receive external observations.
+It must explicitly select the authoritative position source per entity and mode,
+and define reconciliation, stale/unavailable data and transition behaviour so
+simulated movement cannot compete with an external observation. This is an
+architecture seam only: real-data adapters, mode switching and actual live
+integration are not implemented or included in the present scope. Whether an
+independent simulated ground-truth model is ever needed for richer sensor testing
+is an open design question, not an additional movement authority today.
 
 ## Standalone Omniverse library direction (D-046)
 
@@ -226,8 +307,11 @@ are still open:
 ```mermaid
 flowchart TD
     Config[Scenario configuration and event timeline] --> SDP[Synthetic Data Provider]
-    SDP -->|Initial conditions and events| Apply[Execution and event application]
+    SDP -->|Initial conditions and revealed events| Boundary[Input validation and normalisation]
+    Boundary --> Apply[Execution and event application]
     Apply --> State[WorldState]
+    State -->|Committed simulated positions| SDP
+    SDP -->|Source-like observations, not movement commands| Boundary
     State --> Physics[Fuel and service constraints]
     State --> Priority[Delay impact and priority]
     State --> Builder[cuOpt problem builder]
@@ -305,6 +389,21 @@ Changing a compatible visual asset should preserve calculation logic. Changes
 to layout, vehicle dimensions or service interfaces require corresponding
 profile/network updates and renewed feasibility checks.
 
+## Proposed spatial-network administration (Q-17)
+
+The [spatial-network administration draft](spatial_network_administration.md)
+captures the proposed administrator workflow, validation and activation risks.
+The separate Spatial Network Manager owns network draft editing, validation
+orchestration, revision lifecycle and activation requests. The Spatial Model
+supplies the effective spatial network to planning and execution. Detail the
+interfaces and activation boundary with Settings Manager, administration,
+Persistence and execution. Graph storage, USD representation and inclusion of
+an editor in the first demonstration remain open.
+
+Activation must identify the network revision and account for positions, routes,
+commitments and stale planning results. Exact authority and ordering remain
+Q-01/Q-02/Q-13/Q-16; Q-17 records the cross-cutting spatial review.
+
 ## Persistence and database separation (proposal)
 
 The architecture review proposes one MySQL server with `af_core` for durable
@@ -327,7 +426,9 @@ domain mutation, event/time and identity contracts. The storage proposal does
 not itself choose their unresolved semantics or configure a MySQL server.
 
 Settings Manager mediates database-backed module settings and an administration
-page/panel. Critical startup values are duplicated in local bootstrap files to
+page/panel. The administration surface also submits network edits to Spatial
+Network Manager; graph revision ownership and storage are distinct from module
+settings. Critical startup values are duplicated in local bootstrap files to
 initialise storage access. Define copy/override precedence, validate edits and
 distinguish configured/effective versions. Record effective configuration per
 run and apply explicit live/replan/restart rules. Preserve active service and
@@ -350,6 +451,9 @@ connection. Scene fundamentals remain Y-up, metres and 24 time codes per second
 under the existing USD contract.
 
 ## Open questions and next steps
+
+- **Q-17:** Specify Spatial Network Manager interfaces, network validation and
+  lifecycle, effective revision activation, failure handling and initial scope.
 
 - **Q-01:** Name the event/command applier, permitted mutations, snapshot
   publisher and event-log owner. Reconcile the provider's publication wording

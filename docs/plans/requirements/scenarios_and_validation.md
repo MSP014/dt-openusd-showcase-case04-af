@@ -536,12 +536,29 @@ when implementing the provider and presentation adapters:
 
 - The synthetic provider conforms to the normalised input contract; consumers
   do not depend on generator-specific packet fields.
-- Future real-data adapter interfaces/placeholders are identifiable, while no
-  real airport bridge, live connection or recorded GPS feed is claimed.
+- Future real-data adapter interfaces/placeholders are identifiable; real-data
+  adapters, airport bridges and live connections are outside implementation scope.
+  No real data ingestion or recorded GPS feed is claimed.
 - Synthetic GPS-like samples and simulated movement describe the same entity,
   time and location. Applying input does not duplicate travel or fuel changes.
+- Scenario events and source-like observations use the common input boundary;
+  each position sample identifies its source state revision and measurement
+  time. Reprocessing an observation does not move the object again, duplicate a
+  transfer or create a second trajectory. Samples derived from simulation are
+  not independent evidence that the simulated position is correct.
+- Exercise delayed, duplicate and missing observations against the selected
+  policy; retain provenance and expose the outcome without silently replacing
+  newer state with an older position. The policy remains Q-01/Q-02.
 - The declared coordinate mapping locates vehicles, aircraft and infrastructure
   consistently in the ground graph and Y-up/metre scene.
+- Verify geographic/local reference point, compass orientation, units, height
+  reference and known north/east displacements against independent expected
+  coordinates within declared tolerances. Exercise round-trip conversion and
+  non-origin reference points, and retain the reference version on historical
+  samples. A self-consistent round trip alone does not prove geographic accuracy.
+- Handle invalid/missing references and incompatible revisions under the
+  selected policy; changes must not silently reinterpret prior observations,
+  active positions or paths.
 
 These are future contract checks, not evidence that an adapter or geolocation
 implementation already exists. Representation and event application still need

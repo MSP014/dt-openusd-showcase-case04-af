@@ -14,6 +14,12 @@ The Air Field layout (`/World/Stage/`) constitutes the absolute coordinate syste
 * **Terrain/Tarmac:** The central tarmac surface should intersect `Y=0`.
 * **Runways and Taxiways:** Defined by splines or navmeshes sitting directly on or infinitesimally above `Y=0` to prevent Z-fighting in the viewport.
 
+This is a local scene frame, not a latitude/longitude coordinate system. The
+shared, versioned [airfield georeference](../../plans/requirements/architecture.md#shared-airfield-georeference)
+will map a local reference point and orientation to geographic coordinates.
+Geographic origin, datum, height reference and compass orientation remain open;
+Y-up alone does not determine north.
+
 ## 3. Asset Pivot Points (The "Contact Point")
 
 For all dynamic agents (Vehicles, Aircraft, Characters):

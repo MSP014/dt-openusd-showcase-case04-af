@@ -25,6 +25,11 @@ Keep four concerns separate:
 | Refueller capability | KrAZ-258B1 + TZ-22 logical/capability profile under D-042 | Deliberately paired with the KrAZ-221 visual replica; selected values retain separate evidence status |
 | Spatial layout | Real-scale geometry, depot/stands/waiting points, road graph and service interfaces | Recalculate accessibility, distances and feasibility when affected geometry changes |
 
+Spatial Network Manager manages network revisions and requests their controlled
+activation. Layout and vehicle-profile changes may invalidate its validation;
+see [Q-17](spatial_network_administration.md). Spatial Model supplies the
+effective network; changes do not automatically replace active routes.
+
 The planned reference framework for flight preparation/fuel reserves is
 contemporary civil-aviation guidance with explicit jurisdiction and simplified
 assumptions. Historical vehicle physics can be used independently. This is a
@@ -146,7 +151,7 @@ aircraft/refueller positions and infrastructure, plus explicit mapping to the
 ground graph and Y-up/metre scene. Position samples are simulated telemetry,
 not real GPS records. Select the representation/reference and binding metadata
 as part of the spatial profile; reserve source-adapter interfaces without
-implementing real airport-system bridges. See the [source boundary](architecture.md#input-sources-and-synthetic-position-telemetry-d-047).
+implementing real-data adapters or airport-system bridges. See the [source boundary](architecture.md#input-sources-and-synthetic-position-telemetry-d-047).
 
 ## Open questions and next steps
 
